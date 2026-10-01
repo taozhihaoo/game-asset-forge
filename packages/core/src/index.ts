@@ -26,4 +26,5 @@ export * from './atlas.js';
 export * from './manifest.js';
 export * from './pipeline.js';
 export * from './quality/index.js';
+export * from './transformation/index.js';
 export * from './version.js';
