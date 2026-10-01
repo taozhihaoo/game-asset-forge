@@ -78,6 +78,7 @@ export const DEFAULT_NON_DESCRIPTIVE_PATTERNS: readonly string[] = [
   '^img[ _-]?\\d+$',
   '^(final|new|copy|test|untitled)\\d*$',
   '^aaa\\d*$',
+  '^bad[_ -]?name',
 ];
 
 export const DEFAULT_QUALITY_CONFIG: QualityConfig = freezeDeep({

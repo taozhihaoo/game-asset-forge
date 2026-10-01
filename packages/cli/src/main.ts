@@ -16,6 +16,7 @@ import {
   runProcess,
   runValidate,
 } from './commands/index.js';
+import { runAnalyze } from './commands/analyze.js';
 
 const CLI_VERSION = '0.1.0';
 
@@ -107,6 +108,39 @@ function buildProgram(): Command {
       ) => {
         const pipeline = applyBatchOverrides(loadPipeline(opts.preset), opts);
         const { summary } = runBatch({
+          root: resolve(directory),
+          pipeline,
+          outputDir: resolve(opts.output),
+        });
+        if (summary.failed > 0) process.exit(EXIT_PROCESSING_FAILURE);
+      },
+    );
+
+  program
+    .command('analyze')
+    .description(
+      'run the Asset Quality Assistant over a folder (writes quality_report.json + .html)',
+    )
+    .argument('<directory>')
+    .option('-p, --preset <file>', 'preset file (default: built-in default preset)')
+    .requiredOption('-o, --output <dir>', 'output directory for the reports')
+    .option('--recursive', 'recurse into subfolders (overrides preset)')
+    .option('--no-recursive', 'do not recurse into subfolders (overrides preset)')
+    .option('-i, --include <glob...>', 'include globs (overrides preset)')
+    .option('-e, --exclude <glob...>', 'exclude globs (overrides preset)')
+    .action(
+      (
+        directory: string,
+        opts: {
+          preset?: string;
+          output: string;
+          recursive?: boolean;
+          include?: string[];
+          exclude?: string[];
+        },
+      ) => {
+        const pipeline = applyBatchOverrides(loadPipeline(opts.preset), opts);
+        const { summary } = runAnalyze({
           root: resolve(directory),
           pipeline,
           outputDir: resolve(opts.output),

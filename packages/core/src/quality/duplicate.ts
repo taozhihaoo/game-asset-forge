@@ -64,10 +64,43 @@ export function similarityPercent(distance: number): number {
   return Math.round((1 - distance / 64) * 100);
 }
 
+/**
+ * Solid-color sprites are dHash-degenerate (every gradient comparison is
+ * equal → the all-zero hash), so plain dHash would call any two flat
+ * sprites "near identical". Near duplicates therefore also require a close
+ * average color (max per-channel distance, straight alpha ignored).
+ */
+const MAX_MEAN_COLOR_DISTANCE = 24;
+
+interface MeanColor {
+  readonly r: number;
+  readonly g: number;
+  readonly b: number;
+}
+
+export function meanColor(raster: RasterImage): MeanColor {
+  const total = raster.width * raster.height;
+  if (total === 0) return { r: 0, g: 0, b: 0 };
+  let r = 0;
+  let g = 0;
+  let b = 0;
+  for (let i = 0; i < raster.data.length; i += 4) {
+    r += raster.data[i];
+    g += raster.data[i + 1];
+    b += raster.data[i + 2];
+  }
+  return { r: r / total, g: g / total, b: b / total };
+}
+
+function meanColorDistance(a: MeanColor, b: MeanColor): number {
+  return Math.max(Math.abs(a.r - b.r), Math.abs(a.g - b.g), Math.abs(a.b - b.b));
+}
+
 interface AssetFingerprints {
   readonly asset: AssetFile;
   readonly exactHash: string;
   readonly dHash: bigint;
+  readonly mean: MeanColor;
 }
 
 export function duplicateIssues(
@@ -78,6 +111,7 @@ export function duplicateIssues(
     asset,
     exactHash: rasterHash64(asset.raster),
     dHash: dHash64(asset.raster),
+    mean: meanColor(asset.raster),
   }));
 
   const issues: (QualityIssue & { readonly asset: string })[] = [];
@@ -93,7 +127,10 @@ export function duplicateIssues(
         exact = true;
       } else {
         const d = hammingDistance64(earlier.dHash, candidate.dHash);
-        if (d <= config.duplicateHammingThreshold) {
+        if (
+          d <= config.duplicateHammingThreshold &&
+          meanColorDistance(earlier.mean, candidate.mean) <= MAX_MEAN_COLOR_DISTANCE
+        ) {
           matched = earlier;
           distance = d;
         }
