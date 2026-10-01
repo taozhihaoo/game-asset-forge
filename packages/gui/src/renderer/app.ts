@@ -19,6 +19,14 @@ import {
 import { buildSpriteFramesTres } from '../../../cli/src/exporters/godot.js';
 import { buildUnityImporterScript } from '../../../cli/src/exporters/unity.js';
 import { renderQualityReportHtml } from '../../../cli/src/reporting/html.js';
+import {
+  describeSuggestions as describeAiSuggestions,
+  deriveFrom as deriveAiFrom,
+  getMockProvider as getAiMockProvider,
+  renderAiResults,
+  runUnderstanding as runAiUnderstanding,
+  type AiEntryState,
+} from './ai-assistant.js';
 
 /**
  * App wiring: toolbar, drag & drop, preview loop (debounced), preset
@@ -97,13 +105,63 @@ async function exportQualityReport(): Promise<void> {
   log($('log'), `quality report exported → ${dir}`);
 }
 
-function showTab(tab: 'pipeline' | 'quality'): void {
+function showTab(tab: 'pipeline' | 'quality' | 'ai'): void {
   $('pipeline-view').style.display = tab === 'pipeline' ? '' : 'none';
   $('quality-view').style.display = tab === 'quality' ? '' : 'none';
-  for (const id of ['tab-pipeline', 'tab-quality']) {
+  $('ai-view').style.display = tab === 'ai' ? '' : 'none';
+  for (const id of ['tab-pipeline', 'tab-quality', 'tab-ai']) {
     $(id).classList.toggle('active', $(id).dataset.tab === tab);
   }
   if (tab === 'quality') runQualityAnalysis();
+  if (tab === 'ai') void runAiPage();
+}
+
+// --- AI Assistant page (V3) ------------------------------------------------------
+
+const aiProvider = getAiMockProvider();
+let aiStates: AiEntryState[] = [];
+
+async function runAiPage(): Promise<void> {
+  const sources = [...loaded.values()].map((source) => ({
+    name: source.meta.name,
+    raster: source.image,
+    byteSize: source.byteSize,
+  }));
+  if (sources.length === 0) {
+    $('ai-summary').textContent = 'no assets loaded';
+    renderAiResults($('ai-results'), [], { onApply: () => {}, onIgnore: () => {} });
+    return;
+  }
+  const understandings = await runAiUnderstanding(sources, aiProvider);
+  const suggestions = deriveAiFrom(
+    understandings.map((entry) => ({ name: entry.source, result: entry.result })),
+  );
+  aiStates = describeAiSuggestions(suggestions);
+  $('ai-summary').textContent =
+    `${understandings.length} asset(s) · ${aiStates.length} suggestion(s)`;
+  renderAiPageEntries();
+  log(
+    $('log'),
+    `ai assistant: ${aiStates.length} suggestion(s) from ${understandings.length} asset(s) (mock, local)`,
+  );
+}
+
+function renderAiPageEntries(): void {
+  renderAiResults($('ai-results'), aiStates, {
+    onApply: (index: number) => {
+      aiStates = aiStates.map((entry, i) =>
+        i === index ? { ...entry, status: 'applied' as const } : entry,
+      );
+      log($('log'), `suggestion applied: ${aiStates[index]?.text ?? ''}`);
+      renderAiPageEntries();
+    },
+    onIgnore: (index: number) => {
+      aiStates = aiStates.map((entry, i) =>
+        i === index ? { ...entry, status: 'ignored' as const } : entry,
+      );
+      renderAiPageEntries();
+    },
+  });
 }
 
 // --- sources -----------------------------------------------------------------
@@ -365,6 +423,8 @@ async function boot(): Promise<void> {
   showTab('pipeline');
   $('tab-pipeline').addEventListener('click', () => showTab('pipeline'));
   $('tab-quality').addEventListener('click', () => showTab('quality'));
+  $('tab-ai').addEventListener('click', () => showTab('ai'));
+  $('btn-ai-analyze').addEventListener('click', () => void runAiPage());
   $('btn-analyze').addEventListener('click', () => runQualityAnalysis());
   $('btn-export-report').addEventListener('click', () => void exportQualityReport());
 

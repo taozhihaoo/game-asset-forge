@@ -93,6 +93,21 @@ try {
   const qualityText = await win.textContent('#quality-list');
   if (!qualityText.includes('demo_sheet.png')) failures.push('quality list missing asset');
   await win.screenshot({ path: join(root, 'temp', 'gui-quality-verification.png') });
+
+  // ai assistant page (V3): mock understanding runs locally and renders
+  // suggestions with Apply/Ignore; privacy banner states data locality
+  await win.click('#tab-ai');
+  await win.waitForFunction(
+    () => (document.querySelector('#ai-results')?.textContent ?? '').includes('demo_sheet.png'),
+    undefined,
+    { timeout: 20000 },
+  );
+  const aiText = await win.textContent('#ai-results');
+  if (!aiText.includes('Apply')) failures.push('ai suggestions missing Apply buttons');
+  if (!aiText.includes('demo_sheet.png')) failures.push('ai results missing asset');
+  const banner = await win.textContent('.ai-banner');
+  if (!banner.includes('Mock provider')) failures.push('privacy banner missing');
+  await win.screenshot({ path: join(root, 'temp', 'gui-ai-verification.png') });
   await win.click('#tab-pipeline');
   await win.waitForTimeout(200);
 

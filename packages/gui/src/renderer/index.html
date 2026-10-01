@@ -31,6 +31,7 @@
     <nav id="tabs">
       <button id="tab-pipeline" class="tab active" data-tab="pipeline">Pipeline</button>
       <button id="tab-quality" class="tab" data-tab="quality">Quality</button>
+      <button id="tab-ai" class="tab" data-tab="ai">AI Assistant</button>
     </nav>
     <main>
       <div id="pipeline-view">
@@ -52,6 +53,19 @@
           <span id="quality-summary"></span>
         </div>
         <ul id="quality-list"></ul>
+      </div>
+      <div id="ai-view" hidden>
+        <p class="ai-banner">
+          Mock provider — every analysis runs locally and no data leaves this machine. Cloud
+          providers upload images to third-party services and must be explicitly enabled via
+          <code>ai.config.json</code> (CLI).
+        </p>
+        <div class="quality-toolbar">
+          <button id="btn-ai-analyze">Analyze with AI</button>
+          <span id="ai-provider-badge">provider: mock (local)</span>
+          <span id="ai-summary"></span>
+        </div>
+        <div id="ai-results"></div>
       </div>
     </main>
     <footer id="log-panel">
