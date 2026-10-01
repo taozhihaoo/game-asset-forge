@@ -1,0 +1,22 @@
+{
+  "name": "@gameasset-forge/cli",
+  "version": "0.1.0",
+  "description": "GameAsset Forge CLI: PNG/sprite-sheet pipeline runner (init/inspect/validate/process/batch).",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "gameassetforge": "./dist/main.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@gameasset-forge/core": "0.1.0",
+    "commander": "^14.0.0",
+    "pngjs": "^7.0.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  }
+}

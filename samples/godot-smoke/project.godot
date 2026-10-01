@@ -1,0 +1,11 @@
+; Godot 4.x smoke-test project for GameAsset Forge output (charter §20).
+; Generate the assets first: npm run sample:godot (repo root), then open this
+; folder in Godot 4.x and press Play — the generated animation should play.
+
+config_version=5
+
+[application]
+
+config/name="GameAsset Forge Godot Smoke Test"
+run/main_scene="res://main.tscn"
+config/features=PackedStringArray("4.2")
