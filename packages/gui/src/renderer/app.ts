@@ -10,7 +10,12 @@ import { decodePngInBrowser, encodePngInBrowser, joinPath } from './decode.js';
 import { ForgeCanvas, type CanvasTool } from './canvas.js';
 import { AppStore, effectivePipeline, type SourceMeta } from './state.js';
 import { logLine, renderAssets, renderProperties } from './panels.js';
-import { buildQualityAssets, renderQualityList, toReportJson, type QualityReportJson } from './quality.js';
+import {
+  buildQualityAssets,
+  renderQualityList,
+  toReportJson,
+  type QualityReportJson,
+} from './quality.js';
 import { buildSpriteFramesTres } from '../../../cli/src/exporters/godot.js';
 import { buildUnityImporterScript } from '../../../cli/src/exporters/unity.js';
 import { renderQualityReportHtml } from '../../../cli/src/reporting/html.js';

@@ -24,19 +24,27 @@ preset-driven pipeline**: same input + same preset = byte-identical output.
 - Pivot calculation (center / bottom-center / manual), normalized to content
 - Deterministic MaxRects atlas packing with multi-page output
 - Presets: a saved instance of the pipeline, shared by CLI and GUI
+- **Asset Quality Assistant (V2)**: five deterministic rules — naming
+  conventions, wasted transparent canvas, group frame-size consistency,
+  duplicate frames (exact hash + dHash 8×8), pivot checks — with JSON +
+  HTML reports
 - Godot 4 `SpriteFrames .tres` export and a generated Unity Editor importer
-- CLI (`init / inspect / validate / process / batch`) + desktop GUI preview
+- CLI (`init / inspect / validate / process / batch / analyze`) + desktop
+  GUI with Pipeline and Quality pages
 
 ## V1 Scope
 
-Implemented (see `docs/phase-*-report.md` for the full evidence trail):
+V1 shipped (see `docs/phase-*-report.md`; final audit 25/25):
 
 sprite detection (3 modes) · trim · resize · padding/bleed · pivot ·
 deterministic atlas (MaxRects) · batch + presets + CLI · GUI preview with
 manual rect editor · Godot export · Unity importer script · generic JSON
-manifest · 129 tests incl. golden fixtures and 5 real-world CC0 sheets.
+manifest · golden fixtures and 5 real-world CC0 sheets.
 
-Not in V1: character layering, rigging, skeletal animation, Spine export,
+V2 adds the Asset Quality Assistant (detection and suggestions only —
+nothing is modified without you).
+
+Not yet: character layering, rigging, skeletal animation, Spine export,
 AI features (all backlog; see Roadmap).
 
 ## Architecture
@@ -70,10 +78,29 @@ npm run cli -- validate preset.json          # validate a preset only
 npm run cli -- process assets/player.png -p preset.json -o out/
 npm run cli -- batch assets/ -p preset.json -o out/          # recursive
 npm run cli -- batch assets/ -p preset.json -o out/ --no-recursive -e "**/output/**"
+npm run cli -- analyze assets/ -o report/    # Asset Quality Assistant (V2)
 ```
 
 Exit codes: 0 success · 1 processing failure · 2 invalid input/preset/usage.
 Batch writes `summary.json` (total / succeeded / failed / duration / errors).
+
+## Quality Assistant (V2)
+
+`analyze` runs five deterministic rules over a folder of PNGs and writes
+`quality_report.json` + a self-contained `quality_report.html`:
+
+- **naming_convention** — non-descriptive filenames (configurable patterns)
+- **transparent_area** — mostly-unused canvas (configurable ratio, default 60%)
+- **size_mismatch** — deviant frame sizes within an animation group
+- **duplicate_frames** — exact (byte hash) and near duplicates
+  (dHash 8×8, Hamming ≤ 5, average color must also match)
+- **pivot_check** — character pivots away from bottom-center (info by
+  default; configure `quality.characterPatterns` to upgrade to medium)
+
+Detection first, suggestion second, modification optional: `analyze`
+never modifies your files. Configure via the preset's `quality` section
+(`schemaVersion: 2` — v1 presets migrate automatically). The GUI exposes
+the same analysis on its Quality page.
 
 ## GUI
 
@@ -83,13 +110,15 @@ npm run dev -w @gameasset-forge/gui
 
 Drop PNG files, inspect detected rects, tweak the pipeline, draw manual
 rects, preview the atlas (Before/After, page switching), then Export.
-GUI and CLI consume the same preset and produce identical manifests
+The Quality page runs the same analyzer as the CLI (warnings by asset with
+severity badges, Export Report button). GUI and CLI consume the same
+preset and produce identical manifests
 (`tests/gui-core-consistency.test.ts`).
 
 ## Presets
 
-A preset is a saved instance of the pipeline (schemaVersion 1; see
-`schemas/preset.schema.json`):
+A preset is a saved instance of the pipeline (schemaVersion 2 — v1 files
+migrate automatically; see `schemas/preset.schema.json`):
 
 ```json
 {
@@ -149,10 +178,11 @@ validation only — runtime verification requires Unity.
 
 ## Testing
 
-129 tests: core unit (pure, in-memory), CLI integration (tmp dirs, real
-process spawns), golden fixtures (7 synthetic deterministic sheets),
-GUI/Core/CLI consistency, real-world fixtures (5 CC0 sheets from
-OpenGameArt — auto-skip when `fixtures-local/` is absent).
+166 tests: core unit (pure, in-memory; includes the V2 quality rules),
+CLI integration (tmp dirs, real process spawns), golden fixtures (7
+synthetic deterministic sheets), GUI/Core/CLI consistency, GUI state unit
+tests, real-world fixtures (5 CC0 sheets from OpenGameArt — auto-skip when
+`fixtures-local/` is absent).
 
 ```bash
 npm test                 # builds first, then runs everything
@@ -184,10 +214,11 @@ before any public release.
 
 ## AI Independence
 
-Core asset processing is deterministic and offline. AI is not required for
-sprite detection, trimming, atlas packing, pivot calculation, resize, or
-export. **V1 does not use AI.** Future AI-assisted features may be added
-later, but they are not part of V1.
+Core asset processing — and the V2 Quality Assistant — are deterministic
+and fully offline. AI is not required for sprite detection, trimming,
+atlas packing, pivot calculation, resize, export, or quality analysis.
+**V2 does not use AI.** Future AI-assisted features may be added later
+(V3+), but they are not part of V2.
 
 ## License
 
