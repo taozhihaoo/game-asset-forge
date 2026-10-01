@@ -1,0 +1,105 @@
+{
+  "report": {
+    "version": 2,
+    "assets": 8,
+    "warnings": 9,
+    "issues": [
+      {
+        "asset": "IMG_003.png",
+        "warnings": [
+          {
+            "rule": "naming_convention",
+            "severity": "low",
+            "message": "Non-descriptive filename: IMG_003.png",
+            "suggestion": "Rename to describe the content, e.g. '<asset>_<state>_<index>.png' (matched pattern: ^img[ _-]?\\d+$)"
+          }
+        ]
+      },
+      {
+        "asset": "faint.png",
+        "warnings": [
+          {
+            "rule": "transparent_area",
+            "severity": "medium",
+            "message": "Unused canvas: 84% of the pixels are fully transparent",
+            "suggestion": "Consider trimming or reducing canvas size"
+          }
+        ]
+      },
+      {
+        "asset": "hero.png",
+        "warnings": [
+          {
+            "rule": "pivot_check",
+            "severity": "medium",
+            "message": "Character sprite pivot is not near feet",
+            "suggestion": "Set the normalized pivot to (0.5, 1.0)"
+          }
+        ]
+      },
+      {
+        "asset": "hero_idle_01.png",
+        "warnings": [
+          {
+            "rule": "pivot_check",
+            "severity": "info",
+            "message": "Character sprite 'hero_idle_01.png' has no pivot metadata",
+            "suggestion": "Set the normalized pivot to (0.5, 1.0) so the sprite anchors at its feet"
+          }
+        ]
+      },
+      {
+        "asset": "hero_idle_01_copy.png",
+        "warnings": [
+          {
+            "asset": "hero_idle_01_copy.png",
+            "rule": "duplicate_frames",
+            "severity": "high",
+            "message": "Duplicate of hero_idle_01.png (similarity: 100%, byte-identical), potential saving: ~1 KB",
+            "suggestion": "Remove 'hero_idle_01_copy.png' or replace it with a distinct frame"
+          },
+          {
+            "rule": "pivot_check",
+            "severity": "info",
+            "message": "Character sprite 'hero_idle_01_copy.png' has no pivot metadata",
+            "suggestion": "Set the normalized pivot to (0.5, 1.0) so the sprite anchors at its feet"
+          }
+        ]
+      },
+      {
+        "asset": "walk_01.png",
+        "warnings": []
+      },
+      {
+        "asset": "walk_02.png",
+        "warnings": [
+          {
+            "asset": "walk_02.png",
+            "rule": "duplicate_frames",
+            "severity": "high",
+            "message": "Duplicate of walk_01.png (similarity: 100%, byte-identical)",
+            "suggestion": "Remove 'walk_02.png' or replace it with a distinct frame"
+          }
+        ]
+      },
+      {
+        "asset": "walk_03.png",
+        "warnings": [
+          {
+            "rule": "size_mismatch",
+            "severity": "high",
+            "message": "Frame size mismatch in group 'walk': walk_03.png is 64x64 (expected 32x32)",
+            "suggestion": "Resize or re-export to 32x32 so the group animates consistently"
+          },
+          {
+            "asset": "walk_03.png",
+            "rule": "duplicate_frames",
+            "severity": "medium",
+            "message": "Duplicate of walk_01.png (similarity: 100%, dHash distance 0)",
+            "suggestion": "Remove 'walk_03.png' or replace it with a distinct frame"
+          }
+        ]
+      }
+    ]
+  }
+}
