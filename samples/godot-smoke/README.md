@@ -17,11 +17,19 @@ This writes `assets/atlas-0.png`, `assets/atlas.json`, and
 
 ## Verify
 
+Headless (as done for the V1 final audit, Godot 4.7.2):
+
+```bash
+godot --headless --path samples/godot-smoke --import
+godot --headless --path samples/godot-smoke --script res://test_smoke.gd
+```
+
+Expected: `SMOKE_TEST_PASS ... frames_observed=[0, 1] playing=true` (the
+verdict is also written to the path configured in the script).
+
+Visual:
+
 1. Open this folder in Godot 4.2+ (imports `project.godot`).
 2. Press Play.
 3. Expected: the scene's `AnimatedSprite2D` plays the generated `default`
    animation (two frames alternating at 5 fps) — no manual import steps.
-
-If Godot is not installed, verification is reported as
-`BLOCKED BY MISSING GODOT RUNTIME` in the final audit (charter §20 — never
-fake runtime validation).

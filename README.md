@@ -135,8 +135,10 @@ Engine exporters convert to engine conventions; core stays engine-blind.
 
 With `output.godot.enabled`: exports `atlas-N.png` + `atlas.json` +
 `<name>_spriteframes.tres` (SpriteFrames resource, one "default" animation,
-5 fps). See `samples/godot-smoke/` — `npm run sample:godot`, open the folder
-in Godot 4.2+, press Play.
+5 fps). See `samples/godot-smoke/` — `npm run sample:godot`, then verify
+either headless (`godot --headless --path samples/godot-smoke --import` +
+`--script res://test_smoke.gd`; verified against Godot 4.7.2, animation
+frames advance) or visually (open the folder in the Godot editor, Play).
 
 ## Unity Export
 
