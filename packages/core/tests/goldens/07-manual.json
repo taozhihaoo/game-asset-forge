@@ -1,0 +1,83 @@
+{
+  "manifest": {
+    "schemaVersion": 1,
+    "generator": {
+      "name": "gameasset-forge",
+      "version": "0.1.0"
+    },
+    "source": "fixtures/07-manual.png",
+    "pages": [
+      {
+        "file": "atlas-0.png",
+        "width": 28,
+        "height": 14
+      }
+    ],
+    "sprites": [
+      {
+        "id": "fixtures/07-manual.png#hero",
+        "page": 0,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 12,
+          "height": 12
+        },
+        "sourceRect": {
+          "x": 0,
+          "y": 0,
+          "width": 10,
+          "height": 10
+        },
+        "trimmedRect": {
+          "x": 1,
+          "y": 1,
+          "width": 8,
+          "height": 8
+        },
+        "pivot": {
+          "x": 0.5,
+          "y": 1
+        }
+      },
+      {
+        "id": "fixtures/07-manual.png#emblem",
+        "page": 0,
+        "rect": {
+          "x": 14,
+          "y": 0,
+          "width": 14,
+          "height": 14
+        },
+        "sourceRect": {
+          "x": 28,
+          "y": 0,
+          "width": 16,
+          "height": 16
+        },
+        "trimmedRect": {
+          "x": 30,
+          "y": 4,
+          "width": 10,
+          "height": 10
+        },
+        "pivot": {
+          "x": 0.5,
+          "y": 1
+        }
+      }
+    ]
+  },
+  "skipped": [
+    {
+      "id": "fixtures/07-manual.png#sprite-0002",
+      "sourceRect": {
+        "x": 14,
+        "y": 0,
+        "width": 8,
+        "height": 8
+      },
+      "reason": "fully-transparent"
+    }
+  ]
+}

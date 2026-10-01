@@ -1,0 +1,203 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://gameasset-forge.dev/schemas/preset.schema.json",
+  "title": "GameAsset Forge Preset",
+  "description": "A saved instance of a GameAsset Forge pipeline. schemaVersion must be the first top-level key in serialized output. Spacing model: padding and bleed are baked into each packed cell; atlas.spacing is the gap BETWEEN cells. Effective transparent distance between two sprites' content = bleed(A) + padding(A) + spacing + padding(B) + bleed(B). Pivot coordinates are normalized [0,1] against the trimmed (content) rect, origin top-left.",
+  "type": "object",
+  "required": ["schemaVersion"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Preset schema version. Versions above the current build's supported version are rejected with PRESET_SCHEMA_VERSION_UNSUPPORTED."
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "const": "png",
+          "description": "V1 accepts PNG only; other formats fail with FORMAT_UNSUPPORTED."
+        },
+        "recursive": { "type": "boolean", "default": true },
+        "include": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "default": ["**/*.png"],
+          "description": "Glob patterns relative to the input root, '/'-separated."
+        },
+        "exclude": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "default": ["**/output/**"]
+        }
+      }
+    },
+    "detect": {
+      "type": "object",
+      "required": ["mode"],
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "enum": ["alpha-connected-components", "grid", "manual"],
+          "description": "Detection strategy. Manual rectangle selection is the designed fallback when automatic detection fails, not an error path."
+        },
+        "alphaThreshold": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255,
+          "default": 8,
+          "description": "alpha >= threshold counts as foreground. Ignored in manual mode."
+        },
+        "minPixels": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 4,
+          "description": "alpha-connected-components only: components smaller than this are discarded."
+        },
+        "connectivity": {
+          "enum": [4, 8],
+          "default": 8,
+          "description": "alpha-connected-components only: pixel connectivity for component labeling."
+        },
+        "rows": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000,
+          "description": "grid mode: cell height = floor(imageHeight / rows). Provide rows+columns OR cellWidth+cellHeight, never both."
+        },
+        "columns": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000,
+          "description": "grid mode: cell width = floor(imageWidth / columns)."
+        },
+        "cellWidth": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16384,
+          "description": "grid mode: columns = floor(imageWidth / cellWidth); the right remainder strip is ignored."
+        },
+        "cellHeight": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16384,
+          "description": "grid mode: rows = floor(imageHeight / cellHeight); the bottom remainder strip is ignored."
+        },
+        "rects": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/rect" },
+          "description": "manual mode only: user-supplied source-space rectangles, bounds-validated."
+        }
+      }
+    },
+    "trim": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean", "default": true },
+        "alphaThreshold": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255,
+          "description": "Independent trim threshold; when omitted it defaults to the resolved detect.alphaThreshold."
+        }
+      }
+    },
+    "resize": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean", "default": false },
+        "mode": {
+          "const": "scale",
+          "description": "Applied to every content raster after trim, before padding/bleed. Never distorts proportions."
+        },
+        "scale": { "type": "number", "exclusiveMinimum": 0, "maximum": 64, "default": 1 },
+        "filter": {
+          "enum": ["nearest", "linear"],
+          "default": "nearest",
+          "description": "Pixel art defaults to nearest so upscaling never blurs."
+        }
+      }
+    },
+    "padding": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pixels": { "type": "integer", "minimum": 0, "maximum": 64, "default": 2 }
+      }
+    },
+    "bleed": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pixels": { "type": "integer", "minimum": 0, "maximum": 64, "default": 2 }
+      }
+    },
+    "pivot": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": { "enum": ["center", "bottom-center", "manual"], "default": "bottom-center" },
+        "x": { "type": "number", "minimum": 0, "maximum": 1, "description": "manual mode only." },
+        "y": { "type": "number", "minimum": 0, "maximum": 1, "description": "manual mode only." }
+      }
+    },
+    "atlas": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maxWidth": { "type": "integer", "minimum": 1, "maximum": 16384, "default": 2048 },
+        "maxHeight": { "type": "integer", "minimum": 1, "maximum": 16384, "default": 2048 },
+        "algorithm": {
+          "enum": ["maxrects"],
+          "default": "maxrects",
+          "description": "One stable deterministic algorithm in V1 — no algorithm zoo."
+        },
+        "spacing": { "type": "integer", "minimum": 0, "maximum": 128, "default": 2 }
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["png", "json"] },
+          "default": ["png", "json"]
+        },
+        "godot": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": { "enabled": { "type": "boolean", "default": false } }
+        },
+        "unity": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": { "enabled": { "type": "boolean", "default": false } }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "rect": {
+      "type": "object",
+      "required": ["x", "y", "width", "height"],
+      "additionalProperties": false,
+      "properties": {
+        "x": { "type": "integer", "minimum": 0 },
+        "y": { "type": "integer", "minimum": 0 },
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 },
+        "id": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

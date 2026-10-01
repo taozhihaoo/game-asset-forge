@@ -1,0 +1,98 @@
+{
+  "manifest": {
+    "schemaVersion": 1,
+    "generator": {
+      "name": "gameasset-forge",
+      "version": "0.1.0"
+    },
+    "source": "fixtures/02-irregular.png",
+    "pages": [
+      {
+        "file": "atlas-0.png",
+        "width": 76,
+        "height": 30
+      }
+    ],
+    "sprites": [
+      {
+        "id": "fixtures/02-irregular.png#sprite-0001",
+        "page": 0,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 20,
+          "height": 30
+        },
+        "sourceRect": {
+          "x": 2,
+          "y": 2,
+          "width": 20,
+          "height": 30
+        },
+        "trimmedRect": {
+          "x": 2,
+          "y": 2,
+          "width": 20,
+          "height": 30
+        },
+        "pivot": {
+          "x": 0.5,
+          "y": 1
+        }
+      },
+      {
+        "id": "fixtures/02-irregular.png#sprite-0002",
+        "page": 0,
+        "rect": {
+          "x": 22,
+          "y": 0,
+          "width": 40,
+          "height": 10
+        },
+        "sourceRect": {
+          "x": 40,
+          "y": 3,
+          "width": 40,
+          "height": 10
+        },
+        "trimmedRect": {
+          "x": 40,
+          "y": 3,
+          "width": 40,
+          "height": 10
+        },
+        "pivot": {
+          "x": 0.5,
+          "y": 1
+        }
+      },
+      {
+        "id": "fixtures/02-irregular.png#sprite-0003",
+        "page": 0,
+        "rect": {
+          "x": 64,
+          "y": 0,
+          "width": 12,
+          "height": 12
+        },
+        "sourceRect": {
+          "x": 60,
+          "y": 50,
+          "width": 12,
+          "height": 12
+        },
+        "trimmedRect": {
+          "x": 60,
+          "y": 50,
+          "width": 12,
+          "height": 12
+        },
+        "pivot": {
+          "x": 0.5,
+          "y": 1
+        }
+      }
+    ]
+  },
+  "skipped": []
+}

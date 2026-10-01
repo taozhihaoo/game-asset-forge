@@ -1,0 +1,72 @@
+{
+  "manifest": {
+    "schemaVersion": 1,
+    "generator": {
+      "name": "gameasset-forge",
+      "version": "0.1.0"
+    },
+    "source": "fixtures/06-bleed.png",
+    "pages": [
+      {
+        "file": "atlas-0.png",
+        "width": 36,
+        "height": 18
+      }
+    ],
+    "sprites": [
+      {
+        "id": "fixtures/06-bleed.png#sprite-0001",
+        "page": 0,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 16,
+          "height": 16
+        },
+        "sourceRect": {
+          "x": 1,
+          "y": 1,
+          "width": 10,
+          "height": 10
+        },
+        "trimmedRect": {
+          "x": 1,
+          "y": 1,
+          "width": 10,
+          "height": 10
+        },
+        "pivot": {
+          "x": 0.5,
+          "y": 1
+        }
+      },
+      {
+        "id": "fixtures/06-bleed.png#sprite-0002",
+        "page": 0,
+        "rect": {
+          "x": 18,
+          "y": 0,
+          "width": 18,
+          "height": 18
+        },
+        "sourceRect": {
+          "x": 20,
+          "y": 8,
+          "width": 12,
+          "height": 12
+        },
+        "trimmedRect": {
+          "x": 20,
+          "y": 8,
+          "width": 12,
+          "height": 12
+        },
+        "pivot": {
+          "x": 0.5,
+          "y": 1
+        }
+      }
+    ]
+  },
+  "skipped": []
+}

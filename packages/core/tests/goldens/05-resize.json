@@ -1,0 +1,46 @@
+{
+  "manifest": {
+    "schemaVersion": 1,
+    "generator": {
+      "name": "gameasset-forge",
+      "version": "0.1.0"
+    },
+    "source": "fixtures/05-resize.png",
+    "pages": [
+      {
+        "file": "atlas-0.png",
+        "width": 16,
+        "height": 16
+      }
+    ],
+    "sprites": [
+      {
+        "id": "fixtures/05-resize.png#sprite-0001",
+        "page": 0,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 16,
+          "height": 16
+        },
+        "sourceRect": {
+          "x": 2,
+          "y": 2,
+          "width": 8,
+          "height": 8
+        },
+        "trimmedRect": {
+          "x": 2,
+          "y": 2,
+          "width": 8,
+          "height": 8
+        },
+        "pivot": {
+          "x": 0.5,
+          "y": 1
+        }
+      }
+    ]
+  },
+  "skipped": []
+}

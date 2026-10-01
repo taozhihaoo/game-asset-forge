@@ -1,0 +1,129 @@
+{
+  "manifest": {
+    "schemaVersion": 1,
+    "generator": {
+      "name": "gameasset-forge",
+      "version": "0.1.0"
+    },
+    "source": "fixtures/04-multi-page.png",
+    "pages": [
+      {
+        "file": "atlas-0.png",
+        "width": 32,
+        "height": 16
+      },
+      {
+        "file": "atlas-1.png",
+        "width": 32,
+        "height": 16
+      }
+    ],
+    "sprites": [
+      {
+        "id": "fixtures/04-multi-page.png#sprite-0001",
+        "page": 0,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 16,
+          "height": 16
+        },
+        "sourceRect": {
+          "x": 2,
+          "y": 2,
+          "width": 16,
+          "height": 16
+        },
+        "trimmedRect": {
+          "x": 2,
+          "y": 2,
+          "width": 16,
+          "height": 16
+        },
+        "pivot": {
+          "x": 0.5,
+          "y": 1
+        }
+      },
+      {
+        "id": "fixtures/04-multi-page.png#sprite-0002",
+        "page": 0,
+        "rect": {
+          "x": 16,
+          "y": 0,
+          "width": 16,
+          "height": 16
+        },
+        "sourceRect": {
+          "x": 22,
+          "y": 2,
+          "width": 16,
+          "height": 16
+        },
+        "trimmedRect": {
+          "x": 22,
+          "y": 2,
+          "width": 16,
+          "height": 16
+        },
+        "pivot": {
+          "x": 0.5,
+          "y": 1
+        }
+      },
+      {
+        "id": "fixtures/04-multi-page.png#sprite-0003",
+        "page": 1,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 16,
+          "height": 16
+        },
+        "sourceRect": {
+          "x": 42,
+          "y": 2,
+          "width": 16,
+          "height": 16
+        },
+        "trimmedRect": {
+          "x": 42,
+          "y": 2,
+          "width": 16,
+          "height": 16
+        },
+        "pivot": {
+          "x": 0.5,
+          "y": 1
+        }
+      },
+      {
+        "id": "fixtures/04-multi-page.png#sprite-0004",
+        "page": 1,
+        "rect": {
+          "x": 16,
+          "y": 0,
+          "width": 16,
+          "height": 16
+        },
+        "sourceRect": {
+          "x": 62,
+          "y": 2,
+          "width": 16,
+          "height": 16
+        },
+        "trimmedRect": {
+          "x": 62,
+          "y": 2,
+          "width": 16,
+          "height": 16
+        },
+        "pivot": {
+          "x": 0.5,
+          "y": 1
+        }
+      }
+    ]
+  },
+  "skipped": []
+}

@@ -1,0 +1,124 @@
+{
+  "manifest": {
+    "schemaVersion": 1,
+    "generator": {
+      "name": "gameasset-forge",
+      "version": "0.1.0"
+    },
+    "source": "fixtures/01-simple-grid.png",
+    "pages": [
+      {
+        "file": "atlas-0.png",
+        "width": 134,
+        "height": 32
+      }
+    ],
+    "sprites": [
+      {
+        "id": "fixtures/01-simple-grid.png#sprite-0001",
+        "page": 0,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 32,
+          "height": 32
+        },
+        "sourceRect": {
+          "x": 2,
+          "y": 2,
+          "width": 28,
+          "height": 28
+        },
+        "trimmedRect": {
+          "x": 2,
+          "y": 2,
+          "width": 28,
+          "height": 28
+        },
+        "pivot": {
+          "x": 0.5,
+          "y": 1
+        }
+      },
+      {
+        "id": "fixtures/01-simple-grid.png#sprite-0002",
+        "page": 0,
+        "rect": {
+          "x": 34,
+          "y": 0,
+          "width": 32,
+          "height": 32
+        },
+        "sourceRect": {
+          "x": 34,
+          "y": 2,
+          "width": 28,
+          "height": 28
+        },
+        "trimmedRect": {
+          "x": 34,
+          "y": 2,
+          "width": 28,
+          "height": 28
+        },
+        "pivot": {
+          "x": 0.5,
+          "y": 1
+        }
+      },
+      {
+        "id": "fixtures/01-simple-grid.png#sprite-0003",
+        "page": 0,
+        "rect": {
+          "x": 68,
+          "y": 0,
+          "width": 32,
+          "height": 32
+        },
+        "sourceRect": {
+          "x": 2,
+          "y": 34,
+          "width": 28,
+          "height": 28
+        },
+        "trimmedRect": {
+          "x": 2,
+          "y": 34,
+          "width": 28,
+          "height": 28
+        },
+        "pivot": {
+          "x": 0.5,
+          "y": 1
+        }
+      },
+      {
+        "id": "fixtures/01-simple-grid.png#sprite-0004",
+        "page": 0,
+        "rect": {
+          "x": 102,
+          "y": 0,
+          "width": 32,
+          "height": 32
+        },
+        "sourceRect": {
+          "x": 34,
+          "y": 34,
+          "width": 28,
+          "height": 28
+        },
+        "trimmedRect": {
+          "x": 34,
+          "y": 34,
+          "width": 28,
+          "height": 28
+        },
+        "pivot": {
+          "x": 0.5,
+          "y": 1
+        }
+      }
+    ]
+  },
+  "skipped": []
+}
