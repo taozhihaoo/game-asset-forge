@@ -27,6 +27,8 @@
  *   between bleed and spacing; cell size = content + 2*(padding + bleed).
  */
 
+import type { QualityConfig } from './quality/models.js';
+
 // ---------------------------------------------------------------------------
 // Geometry
 // ---------------------------------------------------------------------------
@@ -179,6 +181,8 @@ export interface Pipeline {
     readonly godot: { readonly enabled: boolean };
     readonly unity: { readonly enabled: boolean };
   };
+  /** Asset Quality Assistant configuration (V2, schemaVersion 2+). */
+  readonly quality: QualityConfig;
 }
 
 // ---------------------------------------------------------------------------
@@ -216,6 +220,8 @@ export interface Preset {
     readonly godot?: { readonly enabled?: boolean };
     readonly unity?: { readonly enabled?: boolean };
   };
+  /** Quality Assistant configuration (schemaVersion 2+; absent in v1 files). */
+  readonly quality?: Partial<QualityConfig>;
 }
 
 // ---------------------------------------------------------------------------

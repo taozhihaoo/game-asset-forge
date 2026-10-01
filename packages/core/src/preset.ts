@@ -16,6 +16,7 @@
 
 import { InvalidPresetError, type PresetProblem } from './errors.js';
 import { rectProblems } from './rect.js';
+import { DEFAULT_NON_DESCRIPTIVE_PATTERNS, DEFAULT_QUALITY_CONFIG } from './quality/models.js';
 import {
   ATLAS_ALGORITHMS,
   DETECT_MODES,
@@ -28,7 +29,7 @@ import {
   type Preset,
 } from './types.js';
 
-export const CURRENT_PRESET_SCHEMA_VERSION = 1;
+export const CURRENT_PRESET_SCHEMA_VERSION = 2;
 
 // Limits are deliberately explicit so validation and docs cannot drift apart.
 const LIMITS = {
@@ -60,6 +61,7 @@ const DEFAULTS = {
     godot: { enabled: false },
     unity: { enabled: false },
   },
+  quality: { maxTransparentRatio: 0.6, duplicateHammingThreshold: 5 },
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -422,6 +424,49 @@ function checkOutput(raw: Record<string, unknown>, path: string, problems: Probl
   }
 }
 
+function checkQuality(raw: Record<string, unknown>, path: string, problems: Problem[]): void {
+  checkUnknownKeys(
+    raw,
+    [
+      'maxTransparentRatio',
+      'duplicateHammingThreshold',
+      'characterPatterns',
+      'nonDescriptivePatterns',
+    ],
+    path,
+    problems,
+  );
+  if (raw.maxTransparentRatio !== undefined) {
+    checkNumber(raw.maxTransparentRatio, `${path}.maxTransparentRatio`, 0, 1, problems);
+  }
+  if (raw.duplicateHammingThreshold !== undefined) {
+    checkInt(raw.duplicateHammingThreshold, `${path}.duplicateHammingThreshold`, 0, 64, problems);
+  }
+  // Pattern arrays may be empty — an explicit empty list disables the rule.
+  for (const key of ['characterPatterns', 'nonDescriptivePatterns'] as const) {
+    const value = raw[key];
+    if (value === undefined) continue;
+    const patternPath = `${path}.${key}`;
+    if (!Array.isArray(value)) {
+      problems.push({
+        path: patternPath,
+        message: 'must be an array of pattern strings',
+        code: 'PRESET_INVALID_VALUE',
+      });
+      continue;
+    }
+    value.forEach((entry, i) => {
+      if (typeof entry !== 'string' || entry.length === 0) {
+        problems.push({
+          path: `${patternPath}[${i}]`,
+          message: 'must be a non-empty string',
+          code: 'PRESET_INVALID_VALUE',
+        });
+      }
+    });
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -437,6 +482,7 @@ const TOP_LEVEL_KEYS = [
   'pivot',
   'atlas',
   'output',
+  'quality',
 ] as const;
 
 /** Validates an unknown value as a Preset. Collects all problems, throws once. */
@@ -452,7 +498,18 @@ export function validatePreset(raw: unknown): Preset {
   // Canonical documented order; mirrors serializePreset's key order so
   // problem lists are deterministic.
   const sectionChecks: readonly [
-    'input' | 'detect' | 'trim' | 'resize' | 'padding' | 'bleed' | 'pivot' | 'atlas' | 'output',
+    (
+      | 'input'
+      | 'detect'
+      | 'trim'
+      | 'resize'
+      | 'padding'
+      | 'bleed'
+      | 'pivot'
+      | 'atlas'
+      | 'output'
+      | 'quality'
+    ),
     typeof checkInput,
   ][] = [
     ['input', checkInput],
@@ -464,6 +521,7 @@ export function validatePreset(raw: unknown): Preset {
     ['pivot', checkPivot],
     ['atlas', checkAtlas],
     ['output', checkOutput],
+    ['quality', checkQuality],
   ];
   for (const [key, check] of sectionChecks) {
     const section = raw[key];
@@ -477,13 +535,22 @@ export function validatePreset(raw: unknown): Preset {
 }
 
 /**
- * Versioned migration registry. Only v1 exists; future versions add entries
- * like `2: (p) => upgrade1to2(p)` chained in order.
+ * Versioned migration registry, chained in order (v1 → v2 → … → current).
+ * v1 → v2 introduces the optional `quality` section; absent sections are
+ * filled by normalizePreset, so the upgrade only moves the version marker.
  */
 const MIGRATIONS: ReadonlyMap<
   number,
   (preset: Record<string, unknown>) => Record<string, unknown>
-> = new Map([[1, (p) => p]]);
+> = new Map([
+  [
+    1,
+    (p) => ({
+      ...p,
+      schemaVersion: 2,
+    }),
+  ],
+]);
 
 export function migratePreset(preset: Preset): Preset {
   if (preset.schemaVersion > CURRENT_PRESET_SCHEMA_VERSION) {
@@ -557,6 +624,7 @@ export function normalizePreset(preset: Preset): Pipeline {
       : (detect as { alphaThreshold: number }).alphaThreshold;
 
   const pivot = pivotRaw.mode ?? DEFAULTS.pivot.mode;
+  const qualityRaw = preset.quality ?? {};
   const pipeline: Pipeline = {
     schemaVersion: 1,
     input: {
@@ -593,6 +661,16 @@ export function normalizePreset(preset: Preset): Pipeline {
       godot: { enabled: outputRaw.godot?.enabled ?? DEFAULTS.output.godot.enabled },
       unity: { enabled: outputRaw.unity?.enabled ?? DEFAULTS.output.unity.enabled },
     },
+    quality: {
+      maxTransparentRatio:
+        qualityRaw.maxTransparentRatio ?? DEFAULT_QUALITY_CONFIG.maxTransparentRatio,
+      duplicateHammingThreshold:
+        qualityRaw.duplicateHammingThreshold ?? DEFAULT_QUALITY_CONFIG.duplicateHammingThreshold,
+      characterPatterns: [...(qualityRaw.characterPatterns ?? [])],
+      nonDescriptivePatterns: [
+        ...(qualityRaw.nonDescriptivePatterns ?? DEFAULT_NON_DESCRIPTIVE_PATTERNS),
+      ],
+    },
   };
   return pipeline;
 }
@@ -628,6 +706,7 @@ export function serializePreset(pipeline: Pipeline): string {
       godot: { ...pipeline.output.godot },
       unity: { ...pipeline.output.unity },
     },
+    quality: { ...pipeline.quality },
   };
   return `${JSON.stringify(out, null, 2)}\n`;
 }

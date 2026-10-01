@@ -184,6 +184,39 @@
           "properties": { "enabled": { "type": "boolean", "default": false } }
         }
       }
+    },
+    "quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Asset Quality Assistant configuration (schemaVersion 2). Absent in v1 files; normalizePreset fills these defaults after migration.",
+      "properties": {
+        "maxTransparentRatio": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.6,
+          "description": "Fully transparent pixel ratio above which transparent_area fires."
+        },
+        "duplicateHammingThreshold": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 64,
+          "default": 5,
+          "description": "dHash 8x8 Hamming distance <= this counts as a near duplicate."
+        },
+        "characterPatterns": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "default": [],
+          "description": "Case-insensitive regex patterns (tested against the file stem) marking character sprites for the pivot check. Empty = only info-level hints."
+        },
+        "nonDescriptivePatterns": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "default": ["^img[ _-]?\\d+$", "^(final|new|copy|test|untitled)\\d*$", "^aaa\\d*$"],
+          "description": "Patterns flagging non-descriptive filenames. An explicit empty array disables the check."
+        }
+      }
     }
   },
   "definitions": {

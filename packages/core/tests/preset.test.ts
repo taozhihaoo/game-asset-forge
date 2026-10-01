@@ -149,14 +149,88 @@ describe('validatePreset', () => {
 });
 
 describe('migratePreset', () => {
-  it('returns v1 presets unchanged (identity migration)', () => {
+  it('upgrades v1 to v2 by moving the version marker (quality stays optional)', () => {
     const preset = { schemaVersion: 1, padding: { pixels: 4 } };
+    const migrated = migratePreset(validatePreset(preset));
+    expect(migrated.schemaVersion).toBe(2);
+    expect(migrated.padding).toEqual({ pixels: 4 });
+    expect('quality' in migrated).toBe(false); // normalizePreset fills quality defaults
+  });
+
+  it('keeps v2 presets as-is', () => {
+    const preset = { schemaVersion: 2, quality: { maxTransparentRatio: 0.9 } };
     expect(migratePreset(validatePreset(preset))).toEqual(preset);
   });
 
   it('refuses to migrate from a future version', () => {
     const future = { schemaVersion: CURRENT_PRESET_SCHEMA_VERSION + 1 } as never;
     expect(() => migratePreset(future)).toThrowError(InvalidPresetError);
+  });
+});
+
+describe('schemaVersion 2 — quality section', () => {
+  it('validates the quality section', () => {
+    const valid = {
+      schemaVersion: 2,
+      quality: {
+        maxTransparentRatio: 0.8,
+        duplicateHammingThreshold: 10,
+        characterPatterns: ['^hero$', '^knight'],
+        nonDescriptivePatterns: [],
+      },
+    };
+    expect(() => validatePreset(valid)).not.toThrow();
+    const pipeline = normalizePreset(validatePreset(valid));
+    expect(pipeline.quality).toEqual({
+      maxTransparentRatio: 0.8,
+      duplicateHammingThreshold: 10,
+      characterPatterns: ['^hero$', '^knight'],
+      nonDescriptivePatterns: [],
+    });
+  });
+
+  it('rejects out-of-range quality values with precise paths', () => {
+    const problems: string[] = [];
+    try {
+      validatePreset({
+        schemaVersion: 2,
+        quality: {
+          maxTransparentRatio: 1.5,
+          duplicateHammingThreshold: 65,
+          characterPatterns: [''],
+        },
+      });
+    } catch (error) {
+      const err = error as InvalidPresetError;
+      problems.push(...err.problems.map((p) => `${p.path}=${p.code}`));
+    }
+    expect(problems).toEqual([
+      'quality.maxTransparentRatio=PRESET_INVALID_VALUE',
+      'quality.duplicateHammingThreshold=PRESET_INVALID_VALUE',
+      'quality.characterPatterns[0]=PRESET_INVALID_VALUE',
+    ]);
+  });
+
+  it('rejects unknown keys inside the quality section', () => {
+    expect(() => validatePreset({ schemaVersion: 2, quality: { ratios: 1 } })).toThrowError(
+      /quality\.ratios/,
+    );
+  });
+
+  it('v1 files load with quality defaults applied (migration + normalize)', () => {
+    const pipeline = parsePreset({ schemaVersion: 1, padding: { pixels: 8 } });
+    expect(pipeline.quality).toEqual(DEFAULT_PIPELINE.quality);
+    expect(pipeline.padding.pixels).toBe(8);
+  });
+
+  it('serialize/parse roundtrip keeps the quality section stable', () => {
+    const pipeline = parsePreset({
+      schemaVersion: 2,
+      quality: { characterPatterns: ['^knight'], maxTransparentRatio: 0.5 },
+    });
+    const serialized = JSON.parse(serializePreset(pipeline));
+    expect(serialized.quality).toEqual(pipeline.quality);
+    expect(parsePreset(serialized).quality).toEqual(pipeline.quality);
   });
 });
 
