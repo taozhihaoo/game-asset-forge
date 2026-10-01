@@ -18,6 +18,7 @@ import {
 } from './commands/index.js';
 import { runAnalyze } from './commands/analyze.js';
 import { runAiAnalyze } from './commands/ai-analyze.js';
+import { runTransform } from './commands/transform.js';
 import { loadAiConfig } from './ai-cache.js';
 
 const CLI_VERSION = '0.1.0';
@@ -175,6 +176,32 @@ function buildProgram(): Command {
         if (summary.failed > 0) process.exit(EXIT_PROCESSING_FAILURE);
       },
     );
+
+  program
+    .command('transform')
+    .description(
+      'cutout prototype: segment a PNG into layers, propose a rig, and export a Godot preview project',
+    )
+    .argument('<file>')
+    .requiredOption('-o, --output <dir>', 'output directory for the .forge + layers + godot-export')
+    .option('-t, --template <template>', 'rig template: human | animal | monster', 'human')
+    .option('-d, --dilation <px>', 'Level 1 dilation radius (default 8)', '8')
+    .action((file: string, opts: { output: string; template: string; dilation: string }) => {
+      if (opts.template !== 'human' && opts.template !== 'animal' && opts.template !== 'monster') {
+        process.stderr.write(
+          `error: unknown rig template '${opts.template}' (human | animal | monster)\n`,
+        );
+        process.exit(EXIT_USAGE);
+      }
+      const dilation = Number.parseInt(opts.dilation, 10);
+      const { summary } = runTransform({
+        file: resolve(file),
+        outputDir: resolve(opts.output),
+        template: opts.template,
+        dilation: Number.isFinite(dilation) ? dilation : 8,
+      });
+      if (summary.layers === 0) process.exit(EXIT_PROCESSING_FAILURE);
+    });
 
   return program;
 }
