@@ -1,4 +1,5 @@
 import {
+  analyze,
   parsePreset,
   serializePreset,
   runPipeline,
@@ -9,8 +10,10 @@ import { decodePngInBrowser, encodePngInBrowser, joinPath } from './decode.js';
 import { ForgeCanvas, type CanvasTool } from './canvas.js';
 import { AppStore, effectivePipeline, type SourceMeta } from './state.js';
 import { logLine, renderAssets, renderProperties } from './panels.js';
+import { buildQualityAssets, renderQualityList, toReportJson, type QualityReportJson } from './quality.js';
 import { buildSpriteFramesTres } from '../../../cli/src/exporters/godot.js';
 import { buildUnityImporterScript } from '../../../cli/src/exporters/unity.js';
+import { renderQualityReportHtml } from '../../../cli/src/reporting/html.js';
 
 /**
  * App wiring: toolbar, drag & drop, preview loop (debounced), preset
@@ -22,6 +25,8 @@ interface LoadedSource {
   readonly meta: SourceMeta;
   readonly bitmap: ImageBitmap;
   readonly image: Parameters<typeof runPipeline>[0];
+  /** Encoded file size from the original bytes (quality KB reporting). */
+  readonly byteSize: number;
 }
 
 const store = new AppStore();
@@ -50,6 +55,52 @@ function log(host: HTMLElement, line: string): void {
   logLine(host, line);
 }
 
+// --- quality page (V2) ---------------------------------------------------------
+
+let lastQualityReport: import('@gameasset-forge/core').QualityReport | null = null;
+
+function runQualityAnalysis(): void {
+  const state = store.getState();
+  const sources = [...loaded.entries()].map(([name, source]) => ({
+    name,
+    raster: source.image,
+    byteSize: source.byteSize,
+  }));
+  lastQualityReport = analyze(buildQualityAssets(sources), state.pipeline.quality);
+  renderQualityList($('quality-list'), lastQualityReport);
+  const report = lastQualityReport;
+  $('quality-summary').textContent = `${report.assets} asset(s) · ${report.warnings} warning(s)`;
+  log($('log'), `quality analysis: ${report.warnings} warning(s) across ${report.assets} asset(s)`);
+}
+
+async function exportQualityReport(): Promise<void> {
+  if (lastQualityReport === null) {
+    log($('log'), 'quality report: run Analyze first');
+    return;
+  }
+  const dir = await window.forge.chooseOutputDir();
+  if (dir === null) return;
+  const reportJson: QualityReportJson = toReportJson(lastQualityReport);
+  await window.forge.writeFile(
+    joinPath(dir, 'quality_report.json'),
+    new TextEncoder().encode(`${JSON.stringify(reportJson, null, 2)}\n`),
+  );
+  await window.forge.writeFile(
+    joinPath(dir, 'quality_report.html'),
+    new TextEncoder().encode(renderQualityReportHtml(reportJson)),
+  );
+  log($('log'), `quality report exported → ${dir}`);
+}
+
+function showTab(tab: 'pipeline' | 'quality'): void {
+  $('pipeline-view').style.display = tab === 'pipeline' ? '' : 'none';
+  $('quality-view').style.display = tab === 'quality' ? '' : 'none';
+  for (const id of ['tab-pipeline', 'tab-quality']) {
+    $(id).classList.toggle('active', $(id).dataset.tab === tab);
+  }
+  if (tab === 'quality') runQualityAnalysis();
+}
+
 // --- sources -----------------------------------------------------------------
 
 function basename(filePath: string): string {
@@ -64,6 +115,7 @@ async function addSource(name: string, bytes: Uint8Array): Promise<void> {
       meta: emptyMeta(name, decoded.image.width, decoded.image.height, decoded.image.hasAlpha),
       bitmap: decoded.bitmap,
       image: decoded.image,
+      byteSize: bytes.length,
     });
     const sources = buildSources();
     store.set({ sources, activeSource: name, result: null, page: 0, selection: null });
@@ -303,6 +355,13 @@ async function boot(): Promise<void> {
   });
   $('btn-fit').addEventListener('click', () => canvas.fit());
   $('btn-100').addEventListener('click', () => canvas.zoom100());
+
+  // quality page
+  showTab('pipeline');
+  $('tab-pipeline').addEventListener('click', () => showTab('pipeline'));
+  $('tab-quality').addEventListener('click', () => showTab('quality'));
+  $('btn-analyze').addEventListener('click', () => runQualityAnalysis());
+  $('btn-export-report').addEventListener('click', () => void exportQualityReport());
 
   const setTool = (tool: CanvasTool, buttonId: string): void => {
     canvas.setTool(tool);

@@ -83,6 +83,19 @@ try {
   await win.selectOption('#view-select', 'atlas');
   await win.waitForTimeout(300);
 
+  // quality page (V2): tab switch runs the analysis and renders warnings
+  await win.click('#tab-quality');
+  await win.waitForFunction(
+    () => (document.querySelector('#quality-summary')?.textContent ?? '').includes('asset(s)'),
+    undefined,
+    { timeout: 20000 },
+  );
+  const qualityText = await win.textContent('#quality-list');
+  if (!qualityText.includes('demo_sheet.png')) failures.push('quality list missing asset');
+  await win.screenshot({ path: join(root, 'temp', 'gui-quality-verification.png') });
+  await win.click('#tab-pipeline');
+  await win.waitForTimeout(200);
+
   const log = await win.textContent('#log');
   if (!log.includes('loaded demo_sheet.png')) failures.push('log missing load line');
 

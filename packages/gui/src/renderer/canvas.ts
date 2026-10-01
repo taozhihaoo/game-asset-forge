@@ -74,9 +74,12 @@ export class ForgeCanvas {
     this.host.appendChild(this.app.canvas);
     this.app.canvas.style.width = '100%';
     this.app.canvas.style.height = '100%';
-    new ResizeObserver(() =>
-      this.app?.renderer.resize(this.host.clientWidth, this.host.clientHeight),
-    ).observe(this.host);
+    new ResizeObserver(() => {
+      // Hidden tabs report a zero-size host; Pixi rejects zero resizes.
+      const width = this.host.clientWidth;
+      const height = this.host.clientHeight;
+      if (width > 0 && height > 0) this.app?.renderer.resize(width, height);
+    }).observe(this.host);
   }
 
   destroy(): void {

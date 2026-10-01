@@ -28,22 +28,39 @@
       <span class="spacer"></span>
       <button id="btn-export" class="primary">Export…</button>
     </header>
+    <nav id="tabs">
+      <button id="tab-pipeline" class="tab active" data-tab="pipeline">Pipeline</button>
+      <button id="tab-quality" class="tab" data-tab="quality">Quality</button>
+    </nav>
     <main>
-      <aside id="assets-panel">
-        <h2>Assets</h2>
-        <ul id="assets-list"></ul>
-        <p class="hint">drop PNG files anywhere</p>
-      </aside>
-      <section id="canvas-host"></section>
-      <aside id="properties-panel">
-        <h2>Properties</h2>
-        <div id="properties-body"></div>
-      </aside>
+      <div id="pipeline-view">
+        <aside id="assets-panel">
+          <h2>Assets</h2>
+          <ul id="assets-list"></ul>
+          <p class="hint">drop PNG files anywhere</p>
+        </aside>
+        <section id="canvas-host"></section>
+        <aside id="properties-panel">
+          <h2>Properties</h2>
+          <div id="properties-body"></div>
+        </aside>
+      </div>
+      <div id="quality-view" hidden>
+        <div class="quality-toolbar">
+          <button id="btn-analyze">Analyze</button>
+          <button id="btn-export-report">Export Report…</button>
+          <span id="quality-summary"></span>
+        </div>
+        <ul id="quality-list"></ul>
+      </div>
     </main>
     <footer id="log-panel">
       <h2>Log</h2>
       <pre id="log"></pre>
     </footer>
     <script src="./renderer.js"></script>
+  </body>
+</html>
+
   </body>
 </html>
