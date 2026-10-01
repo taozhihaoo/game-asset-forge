@@ -217,8 +217,28 @@ before any public release.
 Core asset processing — and the V2 Quality Assistant — are deterministic
 and fully offline. AI is not required for sprite detection, trimming,
 atlas packing, pivot calculation, resize, export, or quality analysis.
-**V2 does not use AI.** Future AI-assisted features may be added later
-(V3+), but they are not part of V2.
+**V2 does not use AI.**
+
+## AI Assistant (V3, optional)
+
+`gameassetforge ai analyze assets/ -o out/` runs AI-assisted asset
+understanding and writes three advisory artifacts — `ai_report.json`,
+`classification.json`, `asset_metadata.json` (naming / pivot / animation
+suggestions). It never moves or modifies your files: every suggestion is
+review-and-confirm, and results are cached by image hash + prompt version +
+model so re-runs are free.
+
+- **Off by default.** Without an `ai.config.json` (or with
+  `AI_ENABLED=false`) only the built-in mock provider runs — deterministic,
+  local, zero network, zero cost.
+- **Providers**: `mock` (default), `openai` (cloud — uploads images to a
+  third-party service; requires `enabled: true` plus an API key env var),
+  `local` (reserved for a future sidecar runtime).
+- The GUI's AI Assistant page uses the local mock only.
+- Schema-validated responses: malformed AI output is rejected and the
+  pipeline continues untouched.
+
+Core processing remains deterministic and fully offline.
 
 ## License
 

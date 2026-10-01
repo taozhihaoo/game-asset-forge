@@ -12,8 +12,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "npm run build --workspace @gameasset-forge/core && npm run build --workspace @gameasset-forge/cli && npm run build --workspace @gameasset-forge/gui",
-    "typecheck": "npm run build --workspace @gameasset-forge/core --silent && npm run typecheck --workspace @gameasset-forge/core && npm run typecheck --workspace @gameasset-forge/cli && npm run typecheck --workspace @gameasset-forge/gui",
+    "build": "npm run build --workspace @gameasset-forge/core && npm run build --workspace @gameasset-forge/ai && npm run build --workspace @gameasset-forge/cli && npm run build --workspace @gameasset-forge/gui",
+    "typecheck": "npm run build --workspace @gameasset-forge/core --silent && npm run typecheck --workspace @gameasset-forge/core && npm run build --workspace @gameasset-forge/ai --silent && npm run typecheck --workspace @gameasset-forge/ai && npm run typecheck --workspace @gameasset-forge/cli && npm run typecheck --workspace @gameasset-forge/gui",
     "test": "npm run build --silent && vitest run",
     "lint": "eslint .",
     "format": "prettier --write .",
