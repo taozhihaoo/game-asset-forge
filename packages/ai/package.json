@@ -1,0 +1,23 @@
+{
+  "name": "@gameasset-forge/ai",
+  "version": "0.1.0",
+  "description": "Optional AI layer for GameAsset Forge: vision providers, schema-validated understanding, suggestion derivation. Zero dependencies beyond core types.",
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@gameasset-forge/core": "0.1.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  }
+}
