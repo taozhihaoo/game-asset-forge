@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>GameAsset Forge</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header id="toolbar">
+      <button id="btn-open">Open…</button>
+      <span class="sep"></span>
+      <button id="btn-preset-new" title="Reset preset to defaults">New Preset</button>
+      <button id="btn-preset-load">Load Preset…</button>
+      <button id="btn-preset-save">Save Preset…</button>
+      <span class="sep"></span>
+      <button id="btn-tool-select" title="Select sprites (V)">Select (V)</button>
+      <button id="btn-tool-pan" title="Pan (P, or middle-drag / shift-drag)">Pan (P)</button>
+      <button id="btn-tool-rect" title="Draw manual rects (R)">Add Rect (R)</button>
+      <button id="btn-fit">Fit</button>
+      <button id="btn-100">100%</button>
+      <button id="btn-undo" title="Ctrl+Z">Undo</button>
+      <span class="sep"></span>
+      <select id="view-select">
+        <option value="source">Before (source)</option>
+        <option value="atlas">After (atlas)</option>
+      </select>
+      <select id="page-select" hidden></select>
+      <span class="spacer"></span>
+      <button id="btn-export" class="primary">Export…</button>
+    </header>
+    <main>
+      <aside id="assets-panel">
+        <h2>Assets</h2>
+        <ul id="assets-list"></ul>
+        <p class="hint">drop PNG files anywhere</p>
+      </aside>
+      <section id="canvas-host"></section>
+      <aside id="properties-panel">
+        <h2>Properties</h2>
+        <div id="properties-body"></div>
+      </aside>
+    </main>
+    <footer id="log-panel">
+      <h2>Log</h2>
+      <pre id="log"></pre>
+    </footer>
+    <script src="./renderer.js"></script>
+  </body>
+</html>

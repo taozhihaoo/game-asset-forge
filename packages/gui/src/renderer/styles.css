@@ -1,0 +1,211 @@
+:root {
+  color-scheme: dark;
+  --bg: #17181c;
+  --panel: #1f2127;
+  --border: #2c2f38;
+  --text: #d8dbe2;
+  --muted: #8a8f9c;
+  --accent: #41c7ff;
+  --accent-2: #ff8a3d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--bg);
+}
+
+#toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+
+#toolbar .sep {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+}
+
+#toolbar .spacer {
+  flex: 1;
+}
+
+button {
+  background: #2a2d36;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: var(--accent);
+}
+
+button.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+button.primary {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+select,
+input[type='number'] {
+  background: #262932;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 6px;
+}
+
+main {
+  display: grid;
+  grid-template-columns: 220px 1fr 280px;
+  min-height: 0;
+}
+
+aside,
+#log-panel {
+  background: var(--panel);
+}
+
+#assets-panel {
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+#properties-panel {
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+}
+
+h2 {
+  margin: 0;
+  padding: 8px 10px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+
+#assets-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  overflow-y: auto;
+}
+
+.asset {
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.asset:hover {
+  background: #262932;
+}
+
+.asset.active {
+  background: #2a3340;
+  outline: 1px solid var(--accent);
+}
+
+.asset-name {
+  overflow-wrap: anywhere;
+}
+
+.asset-meta {
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.asset-meta.error {
+  color: #ff6b6b;
+}
+
+.hint {
+  margin-top: auto;
+  padding: 8px 10px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+#canvas-host {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#canvas-host canvas {
+  display: block;
+}
+
+.prop-body {
+  padding: 6px 10px 10px;
+}
+
+.prop-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 0;
+}
+
+.prop-row label {
+  color: var(--muted);
+}
+
+.prop-row input[type='number'] {
+  width: 90px;
+}
+
+.prop-row select {
+  max-width: 160px;
+}
+
+.prop-text {
+  white-space: pre-wrap;
+  margin: 4px 0;
+  font-size: 12px;
+}
+
+#log-panel {
+  border-top: 1px solid var(--border);
+  max-height: 140px;
+  display: flex;
+  flex-direction: column;
+}
+
+#log {
+  margin: 0;
+  padding: 4px 10px 8px;
+  overflow-y: auto;
+  font-family: Consolas, monospace;
+  font-size: 11px;
+  color: var(--muted);
+  min-height: 60px;
+}

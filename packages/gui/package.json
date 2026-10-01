@@ -1,0 +1,20 @@
+{
+  "name": "@gameasset-forge/gui",
+  "version": "0.1.0",
+  "description": "GameAsset Forge desktop shell: Electron + PixiJS pipeline controller.",
+  "license": "MIT",
+  "main": "dist/main.mjs",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.renderer.json && node build-renderer.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.renderer.json --noEmit",
+    "dev": "npm run build --silent && electron ."
+  },
+  "devDependencies": {
+    "electron": "^38.0.0",
+    "esbuild": "^0.25.0",
+    "pixi.js": "^8.0.0"
+  },
+  "dependencies": {
+    "@gameasset-forge/core": "0.1.0"
+  }
+}
