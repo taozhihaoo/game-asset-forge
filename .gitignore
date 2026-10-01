@@ -1,0 +1,17 @@
+node_modules/
+dist/
+dist-gui/
+coverage/
+output/
+temp/
+*.log
+.env
+.env.*
+!.env.example
+
+# local-only real-world fixtures (never commit unlicensed assets)
+fixtures-local/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db

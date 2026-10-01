@@ -1,0 +1,36 @@
+{
+  "name": "gameasset-forge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local-first deterministic 2D game asset preparation pipeline.",
+  "type": "module",
+  "license": "MIT",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "npm run build --workspace @gameasset-forge/core && npm run build --workspace @gameasset-forge/cli && npm run build --workspace @gameasset-forge/gui",
+    "typecheck": "npm run build --workspace @gameasset-forge/core --silent && npm run typecheck --workspace @gameasset-forge/core && npm run typecheck --workspace @gameasset-forge/cli && npm run typecheck --workspace @gameasset-forge/gui",
+    "test": "npm run build --silent && vitest run",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "cli": "node packages/cli/dist/main.js",
+    "sample:godot": "npm run build --silent && node scripts/generate-godot-smoke.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "@types/pngjs": "^6.0.5",
+    "eslint": "^10.11.0",
+    "prettier": "^3.9.9",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.71.0",
+    "vitest": "^5.0.3"
+  },
+  "allowScripts": {
+    "esbuild@0.25.12": true
+  }
+}

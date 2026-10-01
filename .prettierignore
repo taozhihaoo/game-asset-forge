@@ -1,0 +1,6 @@
+package-lock.json
+**/dist/**
+**/dist-gui/**
+**/node_modules/**
+coverage/**
+**/*.md
