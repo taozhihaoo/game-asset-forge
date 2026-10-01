@@ -17,6 +17,8 @@ import {
   runValidate,
 } from './commands/index.js';
 import { runAnalyze } from './commands/analyze.js';
+import { runAiAnalyze } from './commands/ai-analyze.js';
+import { loadAiConfig } from './ai-cache.js';
 
 const CLI_VERSION = '0.1.0';
 
@@ -144,6 +146,31 @@ function buildProgram(): Command {
           root: resolve(directory),
           pipeline,
           outputDir: resolve(opts.output),
+        });
+        if (summary.failed > 0) process.exit(EXIT_PROCESSING_FAILURE);
+      },
+    );
+
+  const ai = program
+    .command('ai')
+    .description('AI-assisted asset understanding (advisory only; off by default)');
+
+  ai.command('analyze')
+    .description(
+      'understand a folder of PNGs and write ai_report.json / classification.json / asset_metadata.json',
+    )
+    .argument('<directory>')
+    .option('-c, --config <file>', 'ai.config.json (provider/model; default: built-in mock)')
+    .requiredOption('-o, --output <dir>', 'output directory for the AI artifacts')
+    .option('--no-cache', 'bypass the result cache (forces provider calls)')
+    .action(
+      async (directory: string, opts: { config?: string; output: string; cache?: boolean }) => {
+        const aiConfig = loadAiConfig(opts.config, (name) => process.env?.[name]);
+        const { summary } = await runAiAnalyze({
+          root: resolve(directory),
+          outputDir: resolve(opts.output),
+          config: aiConfig,
+          useCache: opts.cache,
         });
         if (summary.failed > 0) process.exit(EXIT_PROCESSING_FAILURE);
       },
