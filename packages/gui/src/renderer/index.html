@@ -32,6 +32,7 @@
       <button id="tab-pipeline" class="tab active" data-tab="pipeline">Pipeline</button>
       <button id="tab-quality" class="tab" data-tab="quality">Quality</button>
       <button id="tab-ai" class="tab" data-tab="ai">AI Assistant</button>
+      <button id="tab-editor" class="tab" data-tab="editor">Editor</button>
     </nav>
     <main>
       <div id="pipeline-view">
@@ -66,6 +67,23 @@
           <span id="ai-summary"></span>
         </div>
         <div id="ai-results"></div>
+      </div>
+      <div id="editor-view" hidden>
+        <div class="quality-toolbar">
+          <button id="btn-ed-propose">Propose Layers</button>
+          <button id="btn-ed-export">Export .forge</button>
+          <button id="btn-ed-undo">Undo</button>
+          <button id="btn-ed-brush-add">Brush +</button>
+          <button id="btn-ed-brush-erase">Brush −</button>
+          <span id="ed-summary"></span>
+        </div>
+        <ul id="ed-layers" class="quality-list"></ul>
+        <canvas
+          id="ed-canvas"
+          width="256"
+          height="256"
+          style="image-rendering: pixelated; border: 1px solid #333; max-width: 100%"
+        ></canvas>
       </div>
     </main>
     <footer id="log-panel">

@@ -27,6 +27,7 @@ import {
   runUnderstanding as runAiUnderstanding,
   type AiEntryState,
 } from './ai-assistant.js';
+import { createEditorPage } from './editor-page.js';
 
 /**
  * App wiring: toolbar, drag & drop, preview loop (debounced), preset
@@ -45,6 +46,7 @@ interface LoadedSource {
 const store = new AppStore();
 const loaded = new Map<string, LoadedSource>();
 let previewTimer: number | undefined;
+let editorPageRef: { refresh: () => void } | null = null;
 
 const $ = (id: string): HTMLElement => {
   const el = document.getElementById(id);
@@ -105,15 +107,17 @@ async function exportQualityReport(): Promise<void> {
   log($('log'), `quality report exported → ${dir}`);
 }
 
-function showTab(tab: 'pipeline' | 'quality' | 'ai'): void {
+function showTab(tab: 'pipeline' | 'quality' | 'ai' | 'editor'): void {
   $('pipeline-view').style.display = tab === 'pipeline' ? '' : 'none';
   $('quality-view').style.display = tab === 'quality' ? '' : 'none';
   $('ai-view').style.display = tab === 'ai' ? '' : 'none';
-  for (const id of ['tab-pipeline', 'tab-quality', 'tab-ai']) {
+  $('editor-view').style.display = tab === 'editor' ? '' : 'none';
+  for (const id of ['tab-pipeline', 'tab-quality', 'tab-ai', 'tab-editor']) {
     $(id).classList.toggle('active', $(id).dataset.tab === tab);
   }
   if (tab === 'quality') runQualityAnalysis();
   if (tab === 'ai') void runAiPage();
+  if (tab === 'editor') editorPageRef?.refresh();
 }
 
 // --- AI Assistant page (V3) ------------------------------------------------------
@@ -425,8 +429,60 @@ async function boot(): Promise<void> {
   $('tab-quality').addEventListener('click', () => showTab('quality'));
   $('tab-ai').addEventListener('click', () => showTab('ai'));
   $('btn-ai-analyze').addEventListener('click', () => void runAiPage());
+  $('tab-editor').addEventListener('click', () => showTab('editor'));
   $('btn-analyze').addEventListener('click', () => runQualityAnalysis());
   $('btn-export-report').addEventListener('click', () => void exportQualityReport());
+
+  editorPageRef = createEditorPage(
+    {
+      canvasHost: $('ed-canvas') as HTMLCanvasElement,
+      layersList: $('ed-layers'),
+      summary: $('ed-summary'),
+      btnPropose: $('btn-ed-propose'),
+      btnExportForge: $('btn-ed-export'),
+      btnUndo: $('btn-ed-undo'),
+      btnBrushAdd: $('btn-ed-brush-add'),
+      btnBrushErase: $('btn-ed-brush-erase'),
+    },
+    {
+      log: (line) => log($('log'), line),
+      getActiveSource: () => {
+        const state = store.getState();
+        const name = state.activeSource;
+        if (name === null) return null;
+        const source = loaded.get(name);
+        return source ? { name, image: source.image } : null;
+      },
+      getPipeline: () => store.getState().pipeline,
+      onExportForge: (sourceName, image, layers) => {
+        void window.forge
+          .chooseOutputDir()
+          .then((dir) => {
+            if (dir === null) return;
+            const project = {
+              forgeVersion: 1,
+              asset: { source: sourceName, width: image.width, height: image.height },
+              layers: layers.map((l, i) => ({
+                id: l.id,
+                name: l.name,
+                z: i,
+                sourceRect: { x: 0, y: 0, width: 0, height: 0 },
+                dilation: l.dilation,
+              })),
+              bones: [],
+              mesh: [],
+              weights: [],
+              animationTemplates: ['idle', 'breathing'],
+            };
+            return window.forge.writeFile(
+              joinPath(dir, 'project.forge'),
+              new TextEncoder().encode(`${JSON.stringify(project, null, 2)}\n`),
+            );
+          })
+          .then(() => log($('log'), '.forge exported'));
+      },
+    },
+  );
 
   const setTool = (tool: CanvasTool, buttonId: string): void => {
     canvas.setTool(tool);

@@ -108,8 +108,8 @@ function buildScene(input: CutoutExportInput): string {
     );
     const bone = input.bones.find((b) => b.name === boneName) ?? input.bones[0];
     const offset =
-      `(Vector2(${layer.cellRect.x + layer.cellRect.width / 2 - bone.x}, ` +
-      `${layer.cellRect.y + layer.cellRect.height / 2 - bone.y}))`;
+      `Vector2(${layer.cellRect.x + layer.cellRect.width / 2 - bone.x}, ` +
+      `${layer.cellRect.y + layer.cellRect.height / 2 - bone.y})`;
     lines.push(
       `[node name="Layer_${layer.name}" type="Sprite2D" parent="Skeleton2D/${nodeName.get(bone.name)}"]`,
     );

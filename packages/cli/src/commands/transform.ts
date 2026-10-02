@@ -207,6 +207,13 @@ export function runTransform(options: TransformOptions): TransformResult {
   const godotProjectFile = join(godotDir, 'project.godot');
   writeFileSync(sceneFile, godotFiles.scene, 'utf8');
   writeFileSync(scriptFile, godotFiles.script, 'utf8');
+  // copy layer PNGs into godot-export/layers/ so res:// paths resolve
+  for (const written of writtenLayers) {
+    const src = join(options.outputDir, 'layers', `${written.layerId}.png`);
+    const dst = join(godotDir, 'layers', `${written.layerId}.png`);
+    mkdirSync(dirname(dst), { recursive: true });
+    writeFileSync(dst, readFileSync(src));
+  }
   writeFileSync(godotProjectFile, godotFiles.projectGodot, 'utf8');
   outputFiles.push(sceneFile, scriptFile, godotProjectFile);
 
