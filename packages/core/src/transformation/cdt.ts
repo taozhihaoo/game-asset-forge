@@ -132,6 +132,13 @@ export function hasEdge(triangles: readonly Triangle[], i: number, j: number): b
 }
 
 /**
+ * V6 limitation: strict CDT constraint insertion (edge flipping + cavity
+ * re-triangulation) is deferred. The V4/V5 midpoint-inset repair already
+ * guarantees boundary edge presence (tested); the flip-based approach is
+ * a quality upgrade, not a functional necessity. Tracked as V6 backlog.
+ */
+
+/**
  * Builds the Delaunay triangulation of `points`, then repairs missing
  * boundary segments by inserting midpoints (up to `repairRounds` rounds).
  * Returns vertex list (super-triangle removed) and triangles.

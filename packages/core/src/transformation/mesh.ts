@@ -88,11 +88,12 @@ export function meshStats(mesh: GridMesh): { vertices: number; triangles: number
 }
 
 /**
- * Contour-fitted mesh (V5.1): boundary loops extracted from the mask,
- * simplified with RDP, triangulated with Delaunay + boundary repair, then
- * filtered by mask coverage — concavities are never filled because the
- * centroid test keeps only triangles whose center sits on a set pixel.
- * Holes are not triangulated in V5 (longest outer loop only — documented).
+ * Contour-fitted mesh (V5.1, hole-aware since V6): boundary loops extracted
+ * from the mask, simplified with RDP, triangulated with Delaunay + boundary
+ * repair, then filtered by mask coverage — concavities and holes are never
+ * filled because the centroid test keeps only triangles whose center sits on
+ * a set pixel. ALL loops (outer + holes) contribute boundary points so hole
+ * edges are respected by the triangulation.
  */
 export function contourMeshFromMask(
   mask: Mask,
@@ -105,11 +106,10 @@ export function contourMeshFromMask(
   const loops = maskContours(mask, epsilon);
   if (loops.length === 0) return { vertices: [], triangles: [] };
 
-  // keep only the longest loop (holes are not triangulated in V5 — documented)
-  let boundary: ContourPoint[] = loops[0];
-  for (const loop of loops) {
-    if (loop.length > boundary.length) boundary = loop;
-  }
+  // ALL loops contribute boundary points (outer + holes): hole boundary
+  // vertices participate in Delaunay, and the centroid-on-mask filter
+  // removes triangles that fall inside holes.
+  const boundary: ContourPoint[] = loops.flat();
 
   // interior sample points: cell centers of fully-covered neighborhoods
   const interior: { x: number; y: number }[] = [];
