@@ -25,11 +25,11 @@ const input = { projectName: 'test', layers, bones };
 describe('buildGodotCutoutFiles field-level assertions', () => {
   const files = buildGodotCutoutFiles(input);
 
-  it('load_steps equals ext_resources + 1 (scene)', () => {
+  it('load_steps equals ext_resources + animations + library + 1', () => {
     const match = files.scene.match(/load_steps=(\d+)/);
     expect(match).not.toBeNull();
-    // 2 textures + 1 script + 1 scene = 4
-    expect(Number(match![1])).toBe(4);
+    // 2 textures + 1 script + 2 animations + 1 library + 1 scene = 7
+    expect(Number(match![1])).toBe(7);
   });
 
   it('generates ext_resource for each layer texture', () => {
@@ -79,5 +79,60 @@ describe('buildGodotCutoutFiles field-level assertions', () => {
   it('no timestamps or uids in output', () => {
     expect(files.scene).not.toContain('uid=');
     expect(files.scene).not.toContain('timestamp');
+  });
+});
+
+// --- V5.3 AnimationPlayer tracks ---
+
+describe('AnimationPlayer generation (V5.3)', () => {
+  it('generates idle animation at ±8° in radians with 2s loop', () => {
+    const files = buildGodotCutoutFiles(input);
+    expect(files.scene).toContain('[sub_resource type="Animation" id="Animation_idle"]');
+    expect(files.scene).toContain('resource_name = "idle"');
+    expect(files.scene).toContain('length = 2');
+    expect(files.scene).toContain('loop_mode = 1');
+    // ±8° = 0.13963 rad (5-decimal deterministic formatting)
+    expect(files.scene).toContain('0.13963');
+  });
+
+  it('generates breathing animation at ±2° with 4s loop', () => {
+    const files = buildGodotCutoutFiles(input);
+    expect(files.scene).toContain('[sub_resource type="Animation" id="Animation_breathing"]');
+    expect(files.scene).toContain('resource_name = "breathing"');
+    expect(files.scene).toContain('length = 4');
+    expect(files.scene).toContain('0.03491'); // ±2°
+  });
+
+  it('tracks target Bone2D rotation via NodePath', () => {
+    const files = buildGodotCutoutFiles(input);
+    expect(files.scene).toContain('tracks/0/type = "value"');
+    expect(files.scene).toContain('tracks/0/path = NodePath("Skeleton2D")'); // root bone
+    expect(files.scene).toContain('NodePath("Skeleton2D/Bone_2")');
+  });
+
+  it('generates AnimationLibrary with both animations and AnimationPlayer with autoplay', () => {
+    const files = buildGodotCutoutFiles(input);
+    expect(files.scene).toContain('[sub_resource type="AnimationLibrary" id="AnimationLibrary_1"]');
+    expect(files.scene).toContain('"idle": SubResource("Animation_idle")');
+    expect(files.scene).toContain('"breathing": SubResource("Animation_breathing")');
+    expect(files.scene).toContain(
+      '[node name="AnimationPlayer" type="AnimationPlayer" parent="."]',
+    );
+    expect(files.scene).toContain('autoplay = "idle"');
+  });
+
+  it('disabling animations falls back to the V4 shape', () => {
+    const files = buildGodotCutoutFiles({ ...input, generateAnimations: false });
+    expect(files.scene).not.toContain('AnimationPlayer');
+    expect(files.scene).not.toContain('[sub_resource type="Animation"');
+    // load_steps: 2 textures + 1 script + 1 scene = 4 (V4 formula)
+    const match = files.scene.match(/load_steps=(\d+)/);
+    expect(Number(match![1])).toBe(4);
+  });
+
+  it('animation output remains deterministic', () => {
+    const a = buildGodotCutoutFiles(input);
+    const b = buildGodotCutoutFiles(input);
+    expect(a.scene).toBe(b.scene);
   });
 });
