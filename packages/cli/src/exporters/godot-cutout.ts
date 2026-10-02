@@ -55,7 +55,7 @@ func _process(delta: float) -> void:
 
 function buildScene(input: CutoutExportInput): string {
   const lines: string[] = [];
-  const loadSteps = input.layers.length + input.bones.length + 3;
+  const loadSteps = input.layers.length + 2;
 
   lines.push(`[gd_scene load_steps=${loadSteps} format=3]`);
   lines.push('');
