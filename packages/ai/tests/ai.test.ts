@@ -19,10 +19,9 @@ import {
   toBase64,
   understandAsset,
   validateUnderstanding,
-  type AssetFile,
   type UnderstandingResult,
 } from '../src/index.js';
-import { createRasterImage, parseAssetName, rasterHash64, setPixel } from '@gameasset-forge/core';
+import { createRasterImage, rasterHash64, setPixel, type Pixel } from '@gameasset-forge/core';
 
 const VALID: unknown = {
   assetType: 'character',
@@ -31,16 +30,7 @@ const VALID: unknown = {
   confidence: 0.87,
 };
 
-function solidAsset(name: string, color: Pixel, size = 8): AssetFile {
-  const raster = createRasterImage(size, size, { hasAlpha: true });
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) setPixel(raster, x, y, color);
-  }
-  return { name, raster };
-}
-
 const RED = [255, 0, 0, 255] as Pixel;
-const BLUE = [0, 0, 255, 255] as Pixel;
 
 describe('parseJsonPayload / validateUnderstanding', () => {
   it('accepts a fully valid response', () => {
