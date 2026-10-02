@@ -2,6 +2,7 @@ import type { RasterImage } from '../types.js';
 import { createRasterImage } from '../image.js';
 import { createMask, maskBounds, type Mask } from './types.js';
 import { unionMasks } from './mask.js';
+import { patchMatchFill } from './patchfill.js';
 
 /**
  * Occlusion handling (V4 Feature 4, D3/D4/D10) and layer composition
@@ -39,8 +40,12 @@ export interface ExtractedLayer {
 export interface ExtractOptions {
   /** Level 1 dilation radius in px (default 8, D4). */
   readonly dilation?: number;
-  /** Level 2 diffusion iterations (default 16). */
+  /** Level 2 diffusion iterations (default 16) — used when completion is 'diffusion'. */
   readonly diffusionIterations?: number;
+  /** Level 2 fill strategy (V5.2): 'patchmatch' (default) or 'diffusion'. */
+  readonly completion?: 'diffusion' | 'patchmatch';
+  /** PatchMatch seed (default fixed → deterministic). */
+  readonly patchMatchSeed?: number;
 }
 
 const DEFAULT_DILATION = 8;
@@ -53,6 +58,7 @@ export function extractLayer(
 ): ExtractedLayer {
   const dilation = options.dilation ?? DEFAULT_DILATION;
   const iterations = options.diffusionIterations ?? DEFAULT_DIFFUSION_ITERATIONS;
+  const completion = options.completion ?? 'patchmatch';
   const mask = layer.mask;
 
   const bounds = maskBounds(mask);
@@ -93,8 +99,13 @@ export function extractLayer(
     }
   }
 
-  // Level 2: diffusion fill over still-transparent pixels inside the cell.
-  diffusionFill(raster, iterations);
+  // Level 2: fill still-transparent pixels inside the cell. V5.2 default is
+  // PatchMatch (texture continuity); 'diffusion' remains as the fast path.
+  if (completion === 'patchmatch') {
+    patchMatchFill(raster, { seed: options.patchMatchSeed, iterations: 4 });
+  } else {
+    diffusionFill(raster, iterations);
+  }
 
   // expand mask to cell space for composition
   const cellMask = createMask(cellRect.width, cellRect.height);
