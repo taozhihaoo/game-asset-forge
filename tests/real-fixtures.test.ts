@@ -19,7 +19,25 @@ import { writeFileSync } from 'node:fs';
 
 const REAL_DIR = fileURLToPath(new URL('../fixtures-local/', import.meta.url));
 const RESULTS_FILE = fileURLToPath(new URL('../docs/phase-5-real-results.json', import.meta.url));
-const HAS_FIXTURES = existsSync(REAL_DIR);
+
+/**
+ * Lists real fixture files. Safe to call when the directory is absent
+ * (CI has no fixtures-local/): describe.skipIf only skips the `it`s —
+ * the describe body itself always executes, so directory reads must be
+ * lazy/total, never top-level throwing.
+ */
+function listRealFixtures(): string[] {
+  if (!existsSync(REAL_DIR)) return [];
+  try {
+    return readdirSync(REAL_DIR)
+      .filter((f) => /\.png$/i.test(f))
+      .sort();
+  } catch {
+    return []; // vanished between existsSync and readdir — treat as absent
+  }
+}
+
+const REAL_FILES = listRealFixtures();
 
 /**
  * Preset per sheet family:
@@ -34,10 +52,8 @@ function presetFor(fileName: string): Record<string, unknown> {
   return { schemaVersion: 1 };
 }
 
-describe.skipIf(!HAS_FIXTURES)('real-world fixtures', () => {
-  const files = readdirSync(REAL_DIR)
-    .filter((f) => /\.png$/i.test(f))
-    .sort();
+describe.skipIf(REAL_FILES.length < 3)('real-world fixtures', () => {
+  const files = REAL_FILES;
 
   it('found at least 3 real sprite sheets', () => {
     expect(files.length).toBeGreaterThanOrEqual(3);
