@@ -178,7 +178,7 @@ validation only — runtime verification requires Unity.
 
 ## Testing
 
-166 tests: core unit (pure, in-memory; includes the V2 quality rules),
+347 tests: core unit (pure, in-memory; includes the V2 quality rules),
 CLI integration (tmp dirs, real process spawns), golden fixtures (7
 synthetic deterministic sheets), GUI/Core/CLI consistency, GUI state unit
 tests, real-world fixtures (5 CC0 sheets from OpenGameArt — auto-skip when
@@ -204,13 +204,16 @@ Lives in gitignored `fixtures-local/`; provenance + licenses in
 - Unity importer is statically validated; Godot smoke test needs Godot 4.2+
   installed locally
 - GUI exports the active source; multi-source batch stays in the CLI for now
+- Cutout mesh triangulates the longest outer contour only (holes are a
+  known V6 candidate); PatchMatch completion is a prototype (no multi-scale)
 
 ## Roadmap
 
-V2: character cutout/rigging (limited deformation) · V3: local AI assist
-(segmentation suggestions, human confirms) · V4: optional generative pack.
-Spine export pending a written licensing check with Esoteric Software
-before any public release.
+Shipped: V1 processing pipeline · V2 quality assistant · V3 AI understanding
+· V5 backlog兑现 (contour-fitted CDT mesh, PatchMatch completion,
+AnimationPlayer tracks). Next candidates: mask-hole triangulation,
+multi-scale PatchMatch, Spine export (pending a written licensing check
+with Esoteric Software).
 
 ## AI Independence
 
