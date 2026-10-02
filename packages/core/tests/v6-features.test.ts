@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   createRasterImage,
   maskFromRect,
-  setPixel,
   contourMeshFromMask,
   patchMatchFill,
 } from '../src/index.js';
