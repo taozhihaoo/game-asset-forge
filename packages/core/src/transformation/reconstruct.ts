@@ -28,7 +28,7 @@ export function checkReconstruction(
   for (const layer of layers) {
     for (let y = 0; y < layer.raster.height; y++) {
       for (let x = 0; x < layer.raster.width; x++) {
-        if (layer.mask.data[y * layer.raster.width + x] !== 0) {
+        if (layer.raster.data[(y * layer.raster.width + x) * 4 + 3] !== 0) {
           const sx = layer.cellRect.x + x;
           const sy = layer.cellRect.y + y;
           if (sx >= 0 && sx < width && sy >= 0 && sy < height) {
