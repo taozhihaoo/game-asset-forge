@@ -1,5 +1,7 @@
 export * from './types.js';
 export { dilateMask, erodeMask, invertMask, overlayMask, unionMasks } from './mask.js';
+export * from './contour.js';
+export * from './cdt.js';
 export * from './extract.js';
 export * from './reconstruct.js';
 export * from './skeleton.js';

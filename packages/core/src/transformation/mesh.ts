@@ -1,10 +1,13 @@
 import type { Mask } from './types.js';
+import { maskContours, type ContourPoint } from './contour.js';
+import { triangulateWithBoundary } from './cdt.js';
 
 /**
- * Grid mesh (V4 Feature 6, D9 降级定夺): vertices on a `step` grid, cells
- * kept only when ALL corners are inside the mask — concavities are never
- * filled (the constraint-Delaunay guarantee, achieved structurally).
- * Deterministic ordering: vertices row-major, triangles CCW per cell.
+ * Mesh generation over masks. Two strategies:
+ * - `gridMeshFromMask` (V4 prototype): grid cells fully inside the mask.
+ * - `contourMeshFromMask` (V5.1): contour-fitted constrained-Delaunay mesh —
+ *   boundary loops simplified with RDP, Delaunay + boundary-missing repair,
+ *   centroid-on-mask filtering. Concavities never filled; deterministic.
  */
 
 export interface GridMesh {
@@ -82,4 +85,92 @@ export function gridMeshFromMask(mask: Mask, step: number): GridMesh {
 
 export function meshStats(mesh: GridMesh): { vertices: number; triangles: number } {
   return { vertices: mesh.vertices.length, triangles: mesh.triangles.length };
+}
+
+/**
+ * Contour-fitted mesh (V5.1): boundary loops extracted from the mask,
+ * simplified with RDP, triangulated with Delaunay + boundary repair, then
+ * filtered by mask coverage — concavities are never filled because the
+ * centroid test keeps only triangles whose center sits on a set pixel.
+ * Holes are not triangulated in V5 (longest outer loop only — documented).
+ */
+export function contourMeshFromMask(
+  mask: Mask,
+  options: { epsilon?: number; interiorStep?: number; repairRounds?: number } = {},
+): GridMesh {
+  const epsilon = options.epsilon ?? 1.5;
+  const interiorStep =
+    options.interiorStep ?? Math.max(8, Math.round(Math.min(mask.width, mask.height) / 8));
+
+  const loops = maskContours(mask, epsilon);
+  if (loops.length === 0) return { vertices: [], triangles: [] };
+
+  // keep only the longest loop (holes are not triangulated in V5 — documented)
+  let boundary: ContourPoint[] = loops[0];
+  for (const loop of loops) {
+    if (loop.length > boundary.length) boundary = loop;
+  }
+
+  // interior sample points: cell centers of fully-covered neighborhoods
+  const interior: { x: number; y: number }[] = [];
+  for (let y = interiorStep; y < mask.height; y += interiorStep) {
+    for (let x = interiorStep; x < mask.width; x += interiorStep) {
+      let full = true;
+      for (let dy = -1; dy <= 1 && full; dy++) {
+        for (let dx = -1; dx <= 1 && full; dx++) {
+          const nx = x + dx * Math.max(1, Math.floor(interiorStep / 2));
+          const ny = y + dy * Math.max(1, Math.floor(interiorStep / 2));
+          if (
+            nx < 0 ||
+            nx >= mask.width ||
+            ny < 0 ||
+            ny >= mask.height ||
+            mask.data[ny * mask.width + nx] === 0
+          ) {
+            full = false;
+          }
+        }
+      }
+      if (full) interior.push({ x, y });
+    }
+  }
+
+  const { points, triangles } = triangulateWithBoundary(
+    boundary,
+    interior,
+    options.repairRounds ?? 3,
+  );
+
+  // filter: centroid must sit on a set pixel
+  const kept: (readonly [number, number, number])[] = [];
+  for (const tri of triangles) {
+    const cx = (points[tri.a].x + points[tri.b].x + points[tri.c].x) / 3;
+    const cy = (points[tri.a].y + points[tri.b].y + points[tri.c].y) / 3;
+    const px = Math.floor(cx);
+    const py = Math.floor(cy);
+    if (px < 0 || px >= mask.width || py < 0 || py >= mask.height) continue;
+    if (mask.data[py * mask.width + px] === 0) continue;
+    kept.push([tri.a, tri.b, tri.c] as const);
+  }
+
+  // drop vertices unreferenced by kept triangles (mask corners outside)
+  const used = new Set<number>();
+  for (const [a, b, c] of kept) {
+    used.add(a);
+    used.add(b);
+    used.add(c);
+  }
+  const remap = new Map<number, number>();
+  const finalVertices: { x: number; y: number }[] = [];
+  for (let i = 0; i < points.length; i++) {
+    if (!used.has(i)) continue;
+    remap.set(i, finalVertices.length);
+    finalVertices.push(points[i]);
+  }
+  const finalTriangles = kept.map(
+    ([a, b, c]) =>
+      [remap.get(a) ?? 0, remap.get(b) ?? 0, remap.get(c) ?? 0] as [number, number, number],
+  );
+
+  return { vertices: finalVertices, triangles: finalTriangles };
 }
