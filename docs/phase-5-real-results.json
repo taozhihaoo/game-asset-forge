@@ -1,0 +1,64 @@
+{
+  "fixtures": [
+    {
+      "file": "characters_7.png",
+      "width": 736,
+      "height": 128,
+      "hasAlpha": true,
+      "colorType": 6,
+      "detectMode": "grid",
+      "sprites": 73,
+      "skipped": 0,
+      "pages": 1,
+      "pageSize": ["157x617"]
+    },
+    {
+      "file": "kenney_p1_spritesheet.png",
+      "width": 508,
+      "height": 288,
+      "hasAlpha": true,
+      "colorType": 6,
+      "detectMode": "alpha-connected-components",
+      "sprites": 16,
+      "skipped": 0,
+      "pages": 1,
+      "pageSize": ["309x818"]
+    },
+    {
+      "file": "kenney_tiles_spritesheet.png",
+      "width": 914,
+      "height": 936,
+      "hasAlpha": true,
+      "colorType": 6,
+      "detectMode": "alpha-connected-components",
+      "sprites": 169,
+      "skipped": 0,
+      "pages": 1,
+      "pageSize": ["2034x818"]
+    },
+    {
+      "file": "sheet_9.png",
+      "width": 272,
+      "height": 128,
+      "hasAlpha": true,
+      "colorType": 6,
+      "detectMode": "alpha-connected-components",
+      "sprites": 22,
+      "skipped": 0,
+      "pages": 1,
+      "pageSize": ["191x308"]
+    },
+    {
+      "file": "swoosh_0.png",
+      "width": 128,
+      "height": 32,
+      "hasAlpha": true,
+      "colorType": 6,
+      "detectMode": "alpha-connected-components",
+      "sprites": 4,
+      "skipped": 0,
+      "pages": 1,
+      "pageSize": ["30x128"]
+    }
+  ]
+}
