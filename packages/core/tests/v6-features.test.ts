@@ -5,11 +5,6 @@ import {
   setPixel,
   contourMeshFromMask,
   patchMatchFill,
-  extractLayer,
-  parseAssetName,
-  validateRig,
-  proposeRig,
-  RIG_TEMPLATES,
 } from '../src/index.js';
 
 // --- V6.1: mask 孔洞三角化 ---
