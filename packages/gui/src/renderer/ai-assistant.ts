@@ -6,14 +6,14 @@ import {
   type VisionProvider,
 } from '@gameasset-forge/ai';
 import type { RasterImage } from '@gameasset-forge/core';
+import { t } from './i18n.js';
 
 /**
- * AI Assistant page (V3 Feature 11): understanding + suggestions with
- * Apply/Ignore, backed ONLY by the local mock provider in this build —
- * zero data leaves the machine. Cloud providers are CLI-configured
- * (privacy amendment C5: the banner states where data goes before any
- * cloud provider can be enabled). Pure module — no hidden page state;
- * the caller owns and re-renders the entry list.
+ * AI Assistant page: understanding + suggestions with Apply/Ignore, backed
+ * ONLY by the local mock provider in this build — zero data leaves the
+ * machine. Cloud providers are CLI-configured (the banner states where data
+ * goes before any cloud provider can be enabled). Pure module — the caller
+ * owns and re-renders the entry list.
  */
 
 export interface AiPageSource {
@@ -75,7 +75,7 @@ export function describeSuggestions(suggestions: AiSuggestionSet): AiEntryState[
     out.push({
       kind: 'naming',
       source: suggestion.source,
-      text: `Rename to ${suggestion.suggestedName}`,
+      text: t('ai.rename', { name: suggestion.suggestedName }),
       detail: suggestion.reason,
       status: 'open',
     });
@@ -84,7 +84,7 @@ export function describeSuggestions(suggestions: AiSuggestionSet): AiEntryState[
     out.push({
       kind: 'pivot',
       source: suggestion.source,
-      text: `Set pivot to (${suggestion.pivot.x}, ${suggestion.pivot.y})`,
+      text: t('ai.setPivot', { x: suggestion.pivot.x, y: suggestion.pivot.y }),
       detail: suggestion.reason,
       status: 'open',
     });
@@ -93,7 +93,7 @@ export function describeSuggestions(suggestions: AiSuggestionSet): AiEntryState[
     out.push({
       kind: 'animation',
       source: suggestion.source,
-      text: `Animation templates: ${suggestion.recommended.join(', ')}`,
+      text: t('ai.templates', { list: suggestion.recommended.join(', ') }),
       detail: suggestion.reason,
       status: 'open',
     });
@@ -110,15 +110,15 @@ export function renderAiResults(
   if (states.length === 0) {
     const empty = document.createElement('p');
     empty.className = 'hint';
-    empty.textContent = 'No suggestions — load assets and run Analyze.';
+    empty.textContent = t('ai.noSuggestions');
     host.append(empty);
     return;
   }
   const list = document.createElement('ul');
-  list.className = 'quality-list';
+  list.className = 'card-list';
   states.forEach((entry, index) => {
     const item = document.createElement('li');
-    item.className = `quality-asset ai-entry-${entry.status}`;
+    item.className = `quality-asset ai-entry ai-entry-${entry.status}`;
     const title = document.createElement('div');
     title.className = 'asset-name';
     title.textContent = `${entry.source} — ${entry.text}`;
@@ -129,16 +129,17 @@ export function renderAiResults(
 
     if (entry.status === 'open') {
       const apply = document.createElement('button');
-      apply.textContent = 'Apply';
+      apply.textContent = t('ai.apply');
       apply.addEventListener('click', () => callbacks.onApply(index));
       const ignore = document.createElement('button');
-      ignore.textContent = 'Ignore';
+      ignore.textContent = t('ai.ignore');
       ignore.addEventListener('click', () => callbacks.onIgnore(index));
       item.append(apply, ignore);
     } else {
       const status = document.createElement('span');
       status.className = 'asset-meta';
-      status.textContent = entry.status;
+      status.textContent =
+        entry.status === 'applied' ? t('ai.status.applied') : t('ai.status.ignored');
       item.append(status);
     }
     list.append(item);

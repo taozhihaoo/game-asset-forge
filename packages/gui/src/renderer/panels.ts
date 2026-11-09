@@ -1,10 +1,12 @@
 import type { ManualRect, Pipeline, PipelineResult, Rect } from '@gameasset-forge/core';
 import type { AppState, Selection, SourceMeta } from './state.js';
+import { t } from './i18n.js';
 
 /**
- * DOM panels (charter §18): LEFT assets, RIGHT properties, BOTTOM log.
+ * DOM panels: LEFT assets, RIGHT properties, BOTTOM log.
  * All pipeline parameters render from — and write back to — the same
- * normalized Pipeline the CLI uses (charter §27: no hidden state).
+ * normalized Pipeline the CLI uses (no hidden state).
+ * All visible strings go through the i18n dictionary.
  */
 
 // ---------------------------------------------------------------------------
@@ -21,20 +23,30 @@ export function renderAssets(
   for (const source of sources) {
     const item = document.createElement('li');
     item.className = source.name === activeSource ? 'asset active' : 'asset';
+    item.addEventListener('click', () => onSelect(source.name));
+
+    const thumb = document.createElement('div');
+    thumb.className = 'asset-thumb';
+    thumb.innerHTML = '<svg class="icon"><use href="#i-image"></use></svg>';
+
+    const info = document.createElement('div');
+    info.className = 'asset-info';
     const title = document.createElement('div');
     title.className = 'asset-name';
     title.textContent = source.name;
-    title.addEventListener('click', () => onSelect(source.name));
     const meta = document.createElement('div');
-    meta.className = 'asset-meta';
-    meta.textContent =
-      source.status === 'error'
-        ? `error: ${source.errorMessage ?? 'unknown'}`
-        : `${source.width}x${source.height}${source.hasAlpha ? '' : ' · no alpha'} · ${
-            source.spriteCount ?? '…'
-          } sprites`;
     meta.className = source.status === 'error' ? 'asset-meta error' : 'asset-meta';
-    item.append(title, meta);
+    if (source.status === 'error') {
+      meta.textContent = t('assets.error', { message: source.errorMessage ?? 'unknown' });
+    } else if (source.spriteCount === null) {
+      meta.textContent = t('assets.pending', { w: source.width, h: source.height });
+    } else {
+      meta.textContent =
+        t('assets.meta', { w: source.width, h: source.height, n: source.spriteCount }) +
+        (source.hasAlpha ? '' : t('assets.noAlpha'));
+    }
+    info.append(title, meta);
+    item.append(thumb, info);
     host.append(item);
   }
 }
@@ -61,6 +73,7 @@ export function renderProperties(
 
   const section = (title: string): HTMLDetailsElement => {
     const details = document.createElement('details');
+    details.className = 'prop-section';
     details.open = true;
     const summary = document.createElement('summary');
     summary.textContent = title;
@@ -136,7 +149,7 @@ export function renderProperties(
   };
 
   // detection -----------------------------------------------------------------
-  const detect = section(`Detection (${pipeline.detect.mode})`);
+  const detect = section(`${t('prop.detection')} (${pipeline.detect.mode})`);
   selectInput(
     detect,
     'mode',
@@ -204,7 +217,7 @@ export function renderProperties(
   }
 
   // trim ----------------------------------------------------------------------
-  const trim = section('Trim');
+  const trim = section(t('prop.trim'));
   checkInput(trim, 'enabled', pipeline.trim.enabled, (v) =>
     change((p) => ({ ...p, trim: { ...p.trim, enabled: v } })),
   );
@@ -213,7 +226,7 @@ export function renderProperties(
   );
 
   // resize --------------------------------------------------------------------
-  const resize = section('Resize');
+  const resize = section(t('prop.resize'));
   checkInput(resize, 'enabled', pipeline.resize.enabled, (v) =>
     change((p) => ({ ...p, resize: { ...p.resize, enabled: v } })),
   );
@@ -237,16 +250,16 @@ export function renderProperties(
   );
 
   // margins ---------------------------------------------------------------------
-  const margins = section('Margins');
-  numberInput(margins, 'padding (px)', pipeline.padding.pixels, (v) =>
+  const margins = section(t('prop.margins'));
+  numberInput(margins, t('prop.padding'), pipeline.padding.pixels, (v) =>
     change((p) => ({ ...p, padding: { pixels: clampInt(v, 0, 64) } })),
   );
-  numberInput(margins, 'bleed (px)', pipeline.bleed.pixels, (v) =>
+  numberInput(margins, t('prop.bleed'), pipeline.bleed.pixels, (v) =>
     change((p) => ({ ...p, bleed: { pixels: clampInt(v, 0, 64) } })),
   );
 
   // pivot -----------------------------------------------------------------------
-  const pivot = section('Pivot');
+  const pivot = section(t('prop.pivot'));
   selectInput(
     pivot,
     'mode',
@@ -292,7 +305,7 @@ export function renderProperties(
   }
 
   // atlas -----------------------------------------------------------------------
-  const atlas = section('Atlas');
+  const atlas = section(t('prop.atlas'));
   numberInput(atlas, 'maxWidth', pipeline.atlas.maxWidth, (v) =>
     change((p) => ({ ...p, atlas: { ...p.atlas, maxWidth: clampInt(v, 1, 16384) } })),
   );
@@ -304,24 +317,24 @@ export function renderProperties(
   );
 
   // output ----------------------------------------------------------------------
-  const output = section('Export');
-  checkInput(output, 'godot .tres', pipeline.output.godot.enabled, (v) =>
+  const output = section(t('prop.export'));
+  checkInput(output, t('prop.godot'), pipeline.output.godot.enabled, (v) =>
     change((p) => ({ ...p, output: { ...p.output, godot: { enabled: v } } })),
   );
-  checkInput(output, 'unity importer', pipeline.output.unity.enabled, (v) =>
+  checkInput(output, t('prop.unity'), pipeline.output.unity.enabled, (v) =>
     change((p) => ({ ...p, output: { ...p.output, unity: { enabled: v } } })),
   );
 
   // selection info ----------------------------------------------------------------
-  const info = section('Selection');
+  const info = section(t('prop.selection'));
   if (state.selection === null) {
-    info.append(text('nothing selected'));
+    info.append(text(t('prop.nothingSelected')));
   } else if (state.selection.type === 'sprite') {
     const sprite = state.result?.sprites[state.selection.index];
     info.append(
       text(
         sprite === undefined
-          ? 'sprite unavailable'
+          ? t('prop.spriteUnavailable')
           : `${sprite.id}\nsourceRect (${sprite.sourceRect.x}, ${sprite.sourceRect.y}) ${sprite.sourceRect.width}x${sprite.sourceRect.height}\ncontent ${sprite.trimmedRect.width}x${sprite.trimmedRect.height}\npivot (${sprite.pivot.x}, ${sprite.pivot.y})`,
       ),
     );
@@ -333,7 +346,7 @@ export function renderProperties(
         text(`manual ${rect.id ?? ''}\n(${rect.x}, ${rect.y}) ${rect.width}x${rect.height}`),
       );
       const edit = document.createElement('button');
-      edit.textContent = 'Delete rect';
+      edit.textContent = t('prop.deleteRect');
       edit.addEventListener('click', () => callbacks.onDeleteManual(state.selection!.index));
       div.append(edit);
       info.append(div);
@@ -341,9 +354,10 @@ export function renderProperties(
   }
 
   if (state.manualRects.length > 0 && pipeline.detect.mode !== 'manual') {
-    host.append(
-      text(`note: ${state.manualRects.length} manual rect(s) exist but detect mode is not manual`),
-    );
+    const note = document.createElement('div');
+    note.className = 'panel-note';
+    note.textContent = t('prop.manualNote', { count: state.manualRects.length });
+    host.append(note);
   }
 }
 

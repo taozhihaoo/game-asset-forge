@@ -181,7 +181,10 @@ export function triangulateWithBoundary(
     const offset = 3;
     for (let i = 0; i < boundary.length; i++) {
       const j = (i + 1) % boundary.length;
-      if (!hasEdge(tris, offset + i, offset + j)) {
+      // `tris` indices are RELATIVE to finalPoints (= points.slice(3)), i.e.
+      // boundary[0] is index 0 there. `offset` is only for indexing `points`
+      // (absolute, super-triangle included) when inserting midpoints below.
+      if (!hasEdge(tris, i, j)) {
         missing.push({ i: offset + i, j: offset + j });
       }
     }

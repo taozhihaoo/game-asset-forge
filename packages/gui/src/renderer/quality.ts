@@ -1,8 +1,9 @@
 import { analyze, type AssetFile, type QualityReport } from '@gameasset-forge/core';
+import { t } from './i18n.js';
 
 /**
- * Quality 页（V2 Feature: Asset Quality Assistant 的 GUI 面）。
- * 只渲染 core `analyze()` 的报告——建议列表 + 人工确认，无自动修改。
+ * Quality page: renders the core `analyze()` report — suggestions plus human
+ * confirmation only, never an automatic modification.
  */
 
 export interface QualitySourceInput {
@@ -54,14 +55,17 @@ export function renderQualityList(host: HTMLElement, report: QualityReport | nul
   if (report === null) {
     const empty = document.createElement('p');
     empty.className = 'hint';
-    empty.textContent = 'Run Analyze to inspect the loaded assets.';
+    empty.textContent = t('quality.empty');
     host.append(empty);
     return;
   }
 
   const summary = document.createElement('p');
   summary.className = 'quality-summary';
-  summary.textContent = `${report.assets} asset(s) · ${report.warnings} warning(s)`;
+  summary.textContent = t('quality.summary', {
+    assets: report.assets,
+    warnings: report.warnings,
+  });
   host.append(summary);
 
   for (const entry of report.issues) {
@@ -75,7 +79,7 @@ export function renderQualityList(host: HTMLElement, report: QualityReport | nul
     if (entry.warnings.length === 0) {
       const ok = document.createElement('li');
       ok.className = 'quality-ok';
-      ok.textContent = '✓ Good';
+      ok.textContent = t('quality.good');
       list.append(ok);
     }
     for (const warning of entry.warnings) {

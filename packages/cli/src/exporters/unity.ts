@@ -132,12 +132,18 @@ namespace GameAssetForge
 
                 // Manifest rects are top-left origin; Unity rects are bottom-left.
                 var unityY = pageHeight - sprite.rect.y - sprite.rect.height;
+                // Core pivots are normalized against the trimmed CONTENT rect with a
+                // top-left origin (bottom-center => y = 1.0). Unity SpriteMetaData
+                // pivots are bottom-left origin, so the vertical axis must be flipped.
+                // NOTE: Unity normalizes the pivot against the packed CELL rect while
+                // the manifest pivot is content-relative; when padding/bleed/resize
+                // enlarge the cell this is an approximation (documented limitation).
                 meta.Add(new SpriteMetaData
                 {
                     name = (sprite.id ?? "sprite").Replace('#', '/'),
                     rect = new UnityEngine.Rect(sprite.rect.x, unityY, sprite.rect.width, sprite.rect.height),
                     alignment = (int)SpriteAlignment.Custom,
-                    pivot = new Vector2(sprite.pivot.x, sprite.pivot.y),
+                    pivot = new Vector2(sprite.pivot.x, 1f - sprite.pivot.y),
                     border = Vector4.zero,
                 });
             }

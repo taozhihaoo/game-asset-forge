@@ -12,7 +12,7 @@ import type { AssetFile, QualityConfig, QualityIssue } from './models.js';
  * O(n²) pairwise — comfortable to ~1k assets (documented boundary).
  */
 
-function fnv1a32(bytes: Uint8ClampedArray, seed: number): number {
+function fnv1a32(bytes: ArrayLike<number>, seed: number): number {
   let hash = seed | 0;
   for (let i = 0; i < bytes.length; i++) {
     hash ^= bytes[i];
@@ -21,10 +21,19 @@ function fnv1a32(bytes: Uint8ClampedArray, seed: number): number {
   return hash >>> 0;
 }
 
-/** Combined 2×32-bit FNV-1a of the raw raster bytes, as 16 hex chars. */
+/**
+ * Combined 2×32-bit FNV-1a as 16 hex chars. The width/height header is part
+ * of the hash: a 2x8 raster and a 4x4 raster can share the same RGBA byte
+ * stream but are different images, and must not collide in duplicate-frame
+ * detection or in the AI result cache that reuses this hash.
+ */
 export function rasterHash64(raster: RasterImage): string {
-  const high = fnv1a32(raster.data, 0x811c9dc5);
-  const low = fnv1a32(raster.data, 0x9747b28c);
+  const header = new Uint8Array(8);
+  const view = new DataView(header.buffer);
+  view.setUint32(0, raster.width);
+  view.setUint32(4, raster.height);
+  const high = fnv1a32(raster.data, fnv1a32(header, 0x811c9dc5));
+  const low = fnv1a32(raster.data, fnv1a32(header, 0x9747b28c));
   return high.toString(16).padStart(8, '0') + low.toString(16).padStart(8, '0');
 }
 

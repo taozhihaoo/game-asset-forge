@@ -6,11 +6,11 @@ import {
   type Pipeline,
   type RasterImage,
 } from './editor.js';
+import { t } from './i18n.js';
 
 /**
- * Editor Mode page (V4 Feature 11, prototype): propose layers, paint masks,
- * export .forge. Pure DOM module — the caller owns source/preset access
- * and re-renders (§27: no hidden state).
+ * Editor Mode page: propose layers, paint masks, export .forge.
+ * Pure DOM module — the caller owns source/preset access and re-renders.
  */
 
 export interface EditorPageCallbacks {
@@ -54,8 +54,9 @@ export function createEditorPage(
     source: null,
     undoStack: [],
   };
-  const context = handles.canvasHost.getContext('2d')!;
-  if (context === null) throw new Error('editor: cannot acquire 2d context');
+  const maybeContext = handles.canvasHost.getContext('2d');
+  if (maybeContext === null) throw new Error('editor: cannot acquire 2d context');
+  const context: CanvasRenderingContext2D = maybeContext;
   const scale = 4;
 
   function pushUndo(): void {
@@ -72,10 +73,18 @@ export function createEditorPage(
     renderLayerList();
   }
 
+  function summaryText(): string {
+    return t('editor.summary', {
+      n: state.layers.length,
+      active: state.layers[state.activeLayer]?.name ?? '—',
+    });
+  }
+
   function renderCanvas(): void {
     const source = state.source;
     if (source === null) {
       context.clearRect(0, 0, handles.canvasHost.width, handles.canvasHost.height);
+      handles.summary.textContent = summaryText();
       return;
     }
     handles.canvasHost.width = source.image.width * scale;
@@ -101,7 +110,7 @@ export function createEditorPage(
       if (!layer.visible) return;
       const bounds = boundsOf(layer.mask);
       if (bounds === null) return;
-      context.strokeStyle = index === state.activeLayer ? '#ffd54a' : '#41c7ff';
+      context.strokeStyle = index === state.activeLayer ? '#ffd54a' : '#5b8cff';
       context.lineWidth = 1;
       context.strokeRect(
         bounds.x * scale,
@@ -110,7 +119,7 @@ export function createEditorPage(
         bounds.height * scale,
       );
     });
-    handles.summary.textContent = `${state.layers.length} layer(s) · active: ${state.layers[state.activeLayer]?.name ?? 'none'}`;
+    handles.summary.textContent = summaryText();
   }
 
   function boundsOf(mask: Mask): { x: number; y: number; width: number; height: number } | null {
@@ -134,6 +143,14 @@ export function createEditorPage(
 
   function renderLayerList(): void {
     handles.layersList.replaceChildren();
+    if (state.layers.length === 0) {
+      const empty = document.createElement('li');
+      empty.className = 'hint';
+      empty.style.padding = '8px';
+      empty.textContent = t('editor.noLayers');
+      handles.layersList.append(empty);
+      return;
+    }
     state.layers.forEach((layer, index) => {
       const item = document.createElement('li');
       item.className = index === state.activeLayer ? 'asset active' : 'asset';
@@ -151,20 +168,22 @@ export function createEditorPage(
   function proposeLayers(): void {
     const source = state.source ?? callbacks.getActiveSource();
     if (source === null) {
-      callbacks.log('editor: no assets loaded');
+      callbacks.log(t('editor.noSource'));
       return;
     }
     state.source = source;
+    // Exactly one undo snapshot per proposal — the button must not push a
+    // second one (that used to require two Undo clicks for a single action).
     pushUndo();
     state.layers = proposeEditorLayers(source.image, callbacks.getPipeline(), 2);
     state.activeLayer = 0;
-    callbacks.log(`editor: ${state.layers.length} layer proposal(s)`);
+    callbacks.log(t('editor.proposals', { n: state.layers.length }));
     refresh();
   }
 
   function exportForge(): void {
     if (state.source === null || state.layers.length === 0) {
-      callbacks.log('editor: nothing to export');
+      callbacks.log(t('editor.nothingToExport'));
       return;
     }
     callbacks.onExportForge(state.source.name, state.source.image, state.layers);
@@ -174,25 +193,27 @@ export function createEditorPage(
     const active = state.layers[state.activeLayer];
     if (active === undefined) return;
     const rect = handles.canvasHost.getBoundingClientRect();
-    const x = Math.floor((clientX - rect.left) / scale);
-    const y = Math.floor((clientY - rect.top) / scale);
+    if (rect.width === 0 || rect.height === 0) return;
+    // The canvas is CSS-downscaled (`max-width: 100%`). Convert CSS pixels to
+    // backing-store pixels first, then to source pixels via the display scale.
+    const backingX = ((clientX - rect.left) / rect.width) * handles.canvasHost.width;
+    const backingY = ((clientY - rect.top) / rect.height) * handles.canvasHost.height;
+    const x = Math.floor(backingX / scale);
+    const y = Math.floor(backingY / scale);
     stampBrush(active.mask, x, y, 6, state.brushValue);
     refresh();
   }
 
-  handles.btnPropose.addEventListener('click', () => {
-    pushUndo();
-    proposeLayers();
-  });
-  handles.btnExportForge.addEventListener('click', () => exportForge());
+  handles.btnPropose.addEventListener('click', proposeLayers);
+  handles.btnExportForge.addEventListener('click', exportForge);
   handles.btnUndo.addEventListener('click', () => {
     const previous = state.undoStack.pop();
     if (previous === undefined) {
-      callbacks.log('editor: nothing to undo');
+      callbacks.log(t('editor.nothingToUndo'));
       return;
     }
     state.layers = previous;
-    callbacks.log('editor: undo');
+    callbacks.log(t('editor.undone'));
     refresh();
   });
   handles.btnBrushAdd.addEventListener('click', () => {
@@ -217,7 +238,5 @@ export function createEditorPage(
     dragging = false;
   });
 
-  return {
-    refresh,
-  };
+  return { refresh };
 }

@@ -194,11 +194,17 @@ function buildProgram(): Command {
         process.exit(EXIT_USAGE);
       }
       const dilation = Number.parseInt(opts.dilation, 10);
+      if (!Number.isSafeInteger(dilation) || dilation < 0 || dilation > 256) {
+        process.stderr.write(
+          `error: --dilation must be an integer in [0, 256], got '${opts.dilation}'\n`,
+        );
+        process.exit(EXIT_USAGE);
+      }
       const { summary } = runTransform({
         file: resolve(file),
         outputDir: resolve(opts.output),
         template: opts.template,
-        dilation: Number.isFinite(dilation) ? dilation : 8,
+        dilation,
       });
       if (summary.layers === 0) process.exit(EXIT_PROCESSING_FAILURE);
     });

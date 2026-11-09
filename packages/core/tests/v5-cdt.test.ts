@@ -85,7 +85,7 @@ describe('boundaryEdges / joinLoops', () => {
 // --- Bowyer-Watson + boundary repair ---
 
 describe('triangulateWithBoundary', () => {
-  it('square with 4 corners: co-circular case repaired via inset midpoints', () => {
+  it('square with 4 corners: every boundary edge survives triangulation', () => {
     const boundary = [
       { x: 0, y: 0 },
       { x: 10, y: 0 },
@@ -93,9 +93,25 @@ describe('triangulateWithBoundary', () => {
       { x: 0, y: 10 },
     ];
     const { points, triangles, repaired } = triangulateWithBoundary(boundary, []);
-    // co-circular corners make plain Delaunay drop edges; the inset repair
-    // must detect it, insert interior-offset midpoints, and converge
-    expect(repaired).toBeGreaterThan(0);
+    // Regression guard: `triangles` indices are RELATIVE to `points`
+    // (super-triangle removed). Checking them against ABSOLUTE indices used
+    // to report every boundary edge as missing and insert spurious midpoints.
+    const edges = new Set<string>();
+    for (const tri of triangles) {
+      for (const [a, b] of [
+        [tri.a, tri.b],
+        [tri.b, tri.c],
+        [tri.c, tri.a],
+      ] as const) {
+        edges.add(`${Math.min(a, b)}-${Math.max(a, b)}`);
+      }
+    }
+    for (let i = 0; i < boundary.length; i++) {
+      const j = (i + 1) % boundary.length;
+      expect(edges.has(`${Math.min(i, j)}-${Math.max(i, j)}`), `edge ${i}-${j} missing`).toBe(true);
+    }
+    // A correct co-circular square needs no edge repair at all.
+    expect(repaired).toBe(0);
     for (const corner of boundary) {
       const used = triangles.some((tri) =>
         [tri.a, tri.b, tri.c].some((i) => points[i].x === corner.x && points[i].y === corner.y),

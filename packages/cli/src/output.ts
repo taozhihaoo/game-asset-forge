@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { PipelineResult } from '@gameasset-forge/core';
+import type { OutputFormat, PipelineResult } from '@gameasset-forge/core';
 import { encodePng } from './png.js';
 
 /**
@@ -13,21 +13,34 @@ export interface WrittenOutput {
   readonly bytes: number;
 }
 
-export function writePipelineOutputs(result: PipelineResult, outputDir: string): WrittenOutput[] {
+/**
+ * Output writing: atlas-N.png pages + atlas.json manifest into a directory.
+ * Filenames are fixed and sanitized by construction (charter §14).
+ * `formats` comes from the preset's output.format — previously ignored.
+ */
+export function writePipelineOutputs(
+  result: PipelineResult,
+  outputDir: string,
+  formats: readonly OutputFormat[] = ['png', 'json'],
+): WrittenOutput[] {
   mkdirSync(outputDir, { recursive: true });
   const written: WrittenOutput[] = [];
 
-  result.pages.forEach((page, index) => {
-    const file = join(outputDir, `atlas-${index}.png`);
-    const bytes = encodePng(page);
-    writeFileSync(file, bytes);
-    written.push({ file, bytes: bytes.length });
-  });
+  if (formats.includes('png')) {
+    result.pages.forEach((page, index) => {
+      const file = join(outputDir, `atlas-${index}.png`);
+      const bytes = encodePng(page);
+      writeFileSync(file, bytes);
+      written.push({ file, bytes: bytes.length });
+    });
+  }
 
-  const manifestFile = join(outputDir, 'atlas.json');
-  const manifestBytes = Buffer.from(`${JSON.stringify(result.manifest, null, 2)}\n`, 'utf8');
-  writeFileSync(manifestFile, manifestBytes);
-  written.push({ file: manifestFile, bytes: manifestBytes.length });
+  if (formats.includes('json')) {
+    const manifestFile = join(outputDir, 'atlas.json');
+    const manifestBytes = Buffer.from(`${JSON.stringify(result.manifest, null, 2)}\n`, 'utf8');
+    writeFileSync(manifestFile, manifestBytes);
+    written.push({ file: manifestFile, bytes: manifestBytes.length });
+  }
 
   return written;
 }

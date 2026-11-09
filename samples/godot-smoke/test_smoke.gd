@@ -7,14 +7,31 @@ extends SceneTree
 #   godot --headless --path samples/godot-smoke --script res://test_smoke.gd
 # (add --import first if the .godot cache does not exist yet)
 #
-# Writes the verdict to an absolute path (stdout may be lost on quit()).
+# Writes the verdict to a configurable path (stdout may be lost on quit()):
+# set GAF_SMOKE_RESULT to an absolute path, or accept the default file next to
+# the Godot project. A result that cannot be written must fail loudly.
 # Notes (Godot 4.7):
 # - SceneTree scripts do not receive the _process virtual — frame counting
 #   uses the process_frame signal.
 # - Headless script mode runs the loop uncapped (tiny deltas), so time-based
 #   frame progression is accelerated via speed_scale instead of waiting.
 
-const RESULT_PATH: String = "E:/WorkSpace/Game_Asset_Forge/temp/smoke-result.txt"
+func _result_path() -> String:
+	var path: String = OS.get_environment("GAF_SMOKE_RESULT")
+	if path.is_empty():
+		path = ProjectSettings.globalize_path("res://").path_join("smoke-result.txt")
+	return path
+
+func _write_result(verdict: String) -> bool:
+	var path: String = _result_path()
+	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
+	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		push_error("SMOKE_TEST_FAIL: cannot write result to %s" % [path])
+		return false
+	file.store_string(verdict)
+	file.close()
+	return true
 
 var frames: int = 0
 var sprite: AnimatedSprite2D
@@ -86,8 +103,5 @@ func _finish() -> void:
 		verdict = "FAIL " + "; ".join(failures)
 		for failure in failures:
 			printerr("SMOKE_TEST_FAIL: ", failure)
-	var file: FileAccess = FileAccess.open(RESULT_PATH, FileAccess.WRITE)
-	if file != null:
-		file.store_string(verdict)
-		file.close()
-	quit(0 if failures.is_empty() else 1)
+	var ok: bool = _write_result(verdict)
+	quit(0 if failures.is_empty() and ok else 1)

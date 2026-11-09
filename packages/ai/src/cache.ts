@@ -12,11 +12,18 @@ export interface CacheKeyParts {
   readonly providerId: string;
   readonly model: string;
   readonly promptVersion?: string;
+  /** Source name. Providers may derive results from the name (the built-in
+   *  mock does), so identical pixels under different names must not collide. */
+  readonly name?: string;
 }
 
 export function cacheKey(parts: CacheKeyParts): string {
   const promptVersion = parts.promptVersion ?? PROMPT_VERSION;
-  return `${parts.providerId}/${parts.model}/v${promptVersion}/${parts.imageHash}`;
+  // The name suffix is appended only when supplied, so pre-existing cache
+  // entries (created before name was part of the key) remain addressable.
+  const suffix =
+    parts.name === undefined || parts.name === '' ? '' : `/${encodeURIComponent(parts.name)}`;
+  return `${parts.providerId}/${parts.model}/v${promptVersion}/${parts.imageHash}${suffix}`;
 }
 
 export interface AiCacheStore {

@@ -1,4 +1,4 @@
-import { AiDisabledError } from './types.js';
+import { AiConfigError, AiDisabledError } from './types.js';
 import type { VisionProvider } from './types.js';
 import { LocalVisionProvider } from './providers/local.js';
 import { MockVisionProvider } from './providers/mock.js';
@@ -48,6 +48,12 @@ export function resolveAiConfig(
     apiKeyEnv: raw?.apiKeyEnv ?? 'OPENAI_API_KEY',
     promptVersion: raw?.promptVersion ?? PROMPT_VERSION,
   };
+  const validProviders: readonly string[] = ['mock', 'openai', 'local'];
+  if (!validProviders.includes(base.provider as string)) {
+    throw new AiConfigError(
+      `invalid AI provider "${String(base.provider)}" — expected one of mock | openai | local`,
+    );
+  }
   const envProvider = env('AI_PROVIDER');
   const provider = (
     envProvider === 'mock' || envProvider === 'openai' || envProvider === 'local'
@@ -84,5 +90,7 @@ export function createProvider(config: AiConfig, env: GetEnv = nodeGetEnv): Visi
         model: config.model ?? 'gpt-4o-mini',
       });
     }
+    default:
+      throw new AiConfigError(`unknown AI provider "${String(config.provider)}"`);
   }
 }

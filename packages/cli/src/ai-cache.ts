@@ -17,9 +17,18 @@ export function loadAiConfig(
     if (!existsSync(configFile)) {
       throw new Error(`ai config not found: ${configFile}`);
     }
-    raw = JSON.parse(readFileSync(configFile, 'utf8'));
+    raw = parseConfigJson(readFileSync(configFile, 'utf8'), configFile);
   }
   return resolveAiConfig(raw as Partial<AiConfig>, env);
+}
+
+function parseConfigJson(text: string, configFile: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch (cause) {
+    const message = cause instanceof Error ? cause.message : String(cause);
+    throw new Error(`invalid ai config JSON in ${configFile}: ${message}`);
+  }
 }
 
 /** JSON-file-backed cache store (deterministic key → result map on disk). */
@@ -28,13 +37,18 @@ export class JsonFileCacheStore implements AiCacheStore {
   private dirty = false;
 
   constructor(private readonly file: string) {
-    if (existsSync(file)) {
+    if (!existsSync(file)) return;
+    // The cache is an optional acceleration layer: a truncated or corrupt
+    // JSON file must degrade to a cold cache, never abort `ai analyze`.
+    try {
       const parsed: unknown = JSON.parse(readFileSync(file, 'utf8'));
       if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
         for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
           this.entries.set(key, value);
         }
       }
+    } catch {
+      this.entries.clear();
     }
   }
 

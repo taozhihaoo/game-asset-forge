@@ -3,9 +3,13 @@ import type { ManualRect, PipelineResult, Rect } from '@gameasset-forge/core';
 import type { Selection } from './state.js';
 
 /**
- * PixiJS interactive canvas (charter §18): zoom, pan, fit, reset, detected
- * rect overlays, selection highlight, pivot marker, and the manual rectangle
- * editor (drag to create, move, resize via corner handle, delete).
+ * PixiJS interactive canvas: zoom, pan, fit, detected rect overlays,
+ * selection highlight, pivot marker, and the manual rectangle editor.
+ *
+ * The canvas owns two texture sources — the ORIGINAL source bitmap and the
+ * COMPOSED atlas page bitmaps. `view`/`page` decide which one is displayed.
+ * Previously setResult() was never called by the app, so overlays never drew
+ * and "After (atlas)" showed the source image (or nothing at all).
  * PixiJS never leaks into core — this module talks to the store via callbacks.
  */
 
@@ -16,6 +20,7 @@ export interface CanvasCallbacks {
   onRectCommitted(rect: Rect): void;
   onRectChanged(index: number, rect: Rect): void;
   onSelectionChanged(selection: Selection | null): void;
+  onZoomChanged?(zoom: number): void;
 }
 
 interface DisplayedRect {
@@ -33,7 +38,9 @@ export class ForgeCanvas {
   private overlay = new Graphics();
   private draft = new Graphics();
 
-  private bitmap: ImageBitmap | null = null;
+  private sourceBitmap: ImageBitmap | null = null;
+  private atlasBitmaps: readonly ImageBitmap[] = [];
+  private displayedBitmap: ImageBitmap | null = null;
   private result: PipelineResult | null = null;
   private view: 'source' | 'atlas' = 'source';
   private page = 0;
@@ -62,7 +69,7 @@ export class ForgeCanvas {
 
   async init(): Promise<void> {
     this.app = new Application();
-    await this.app.init({ background: 0x17181c, antialias: false, resizeTo: this.host });
+    await this.app.init({ background: 0x0c111a, antialias: false, resizeTo: this.host });
     this.app.canvas.addEventListener('wheel', this.onWheel, { passive: false });
     this.app.canvas.addEventListener('pointerdown', this.onPointerDown);
     this.app.canvas.addEventListener('pointermove', this.onPointerMove);
@@ -87,32 +94,34 @@ export class ForgeCanvas {
     this.app = null;
   }
 
-  // --- state ingestion -------------------------------------------------------
-
-  setSource(bitmap: ImageBitmap | null): void {
-    if (this.imageSprite !== null) {
-      this.world.removeChild(this.imageSprite);
-      this.imageSprite.destroy();
-      this.imageSprite = null;
-    }
-    this.bitmap = bitmap;
-    if (bitmap !== null) {
-      this.imageSprite = new Sprite(Texture.from(bitmap));
-      this.world.addChildAt(this.imageSprite, 0);
-    }
-    this.fit();
-    this.redraw();
+  get zoom(): number {
+    return this.scale;
   }
 
-  setResult(result: PipelineResult | null): void {
+  // --- state ingestion -------------------------------------------------------
+
+  /** The decoded SOURCE image (SOURCE space). */
+  setSource(bitmap: ImageBitmap | null): void {
+    this.sourceBitmap = bitmap;
+    this.syncDisplay();
+  }
+
+  /** Pipeline result plus the composed atlas page pixels (PAGE space). */
+  setResult(result: PipelineResult | null, atlasBitmaps: readonly ImageBitmap[] = []): void {
+    const previous = this.atlasBitmaps;
     this.result = result;
-    this.redraw();
+    this.atlasBitmaps = atlasBitmaps;
+    this.syncDisplay();
+    // Release superseded page bitmaps once the sprite no longer points at them.
+    for (const bitmap of previous) {
+      if (!atlasBitmaps.includes(bitmap) && bitmap !== this.displayedBitmap) bitmap.close();
+    }
   }
 
   setView(view: 'source' | 'atlas', page: number): void {
     this.view = view;
     this.page = page;
-    this.redraw();
+    this.syncDisplay();
   }
 
   setSelection(selection: Selection | null): void {
@@ -127,8 +136,30 @@ export class ForgeCanvas {
 
   setTool(tool: CanvasTool): void {
     this.tool = tool;
-    this.app!.canvas.style.cursor =
-      tool === 'rect' ? 'crosshair' : tool === 'pan' ? 'grab' : 'default';
+    if (this.app !== null) {
+      this.app.canvas.style.cursor =
+        tool === 'rect' ? 'crosshair' : tool === 'pan' ? 'grab' : 'default';
+    }
+  }
+
+  /** Swaps the displayed texture when view/page/bitmap changes, then redraws. */
+  private syncDisplay(): void {
+    const desired =
+      this.view === 'atlas' ? (this.atlasBitmaps[this.page] ?? null) : this.sourceBitmap;
+    if (desired !== this.displayedBitmap) {
+      if (this.imageSprite !== null) {
+        this.world.removeChild(this.imageSprite);
+        this.imageSprite.destroy();
+        this.imageSprite = null;
+      }
+      this.displayedBitmap = desired;
+      if (desired !== null) {
+        this.imageSprite = new Sprite(Texture.from(desired));
+        this.world.addChildAt(this.imageSprite, 0);
+      }
+      this.fit();
+    }
+    this.redraw();
   }
 
   // --- transforms ------------------------------------------------------------
@@ -146,7 +177,7 @@ export class ForgeCanvas {
     if (source === null || this.app === null) return;
     const view = this.viewSize;
     if (view.width < 10 || view.height < 10) return;
-    const margin = 32;
+    const margin = 40;
     this.scale = Math.min(
       (view.width - margin) / source.width,
       (view.height - margin) / source.height,
@@ -155,6 +186,7 @@ export class ForgeCanvas {
     this.scale = Math.max(this.scale, 0.02);
     this.offsetX = (view.width - source.width * this.scale) / 2;
     this.offsetY = (view.height - source.height * this.scale) / 2;
+    this.callbacks.onZoomChanged?.(this.scale);
     this.redraw();
   }
 
@@ -163,15 +195,20 @@ export class ForgeCanvas {
     this.scale = 1;
     this.offsetX = (view.width - (this.displaySize()?.width ?? 0)) / 2;
     this.offsetY = (view.height - (this.displaySize()?.height ?? 0)) / 2;
+    this.callbacks.onZoomChanged?.(this.scale);
     this.redraw();
   }
 
   private displaySize(): { width: number; height: number } | null {
     if (this.view === 'atlas') {
+      const bitmap = this.atlasBitmaps[this.page];
+      if (bitmap !== undefined) return { width: bitmap.width, height: bitmap.height };
       const page = this.result?.atlas.pages[this.page];
       return page ? { width: page.width, height: page.height } : null;
     }
-    return this.bitmap ? { width: this.bitmap.width, height: this.bitmap.height } : null;
+    return this.sourceBitmap
+      ? { width: this.sourceBitmap.width, height: this.sourceBitmap.height }
+      : null;
   }
 
   // --- displayed rects ---------------------------------------------------------
@@ -201,13 +238,6 @@ export class ForgeCanvas {
     this.world.scale.set(this.scale);
     this.world.position.set(this.offsetX, this.offsetY);
 
-    if (this.view === 'atlas' && this.result !== null) {
-      const page = this.result.atlas.pages[this.page];
-      if (page !== undefined && this.imageSprite === null) {
-        // atlas view without a source bitmap: page pixels arrive via setSource(null)
-      }
-    }
-
     this.overlay.clear();
     for (const displayed of this.displayedRects()) {
       const selected =
@@ -216,8 +246,9 @@ export class ForgeCanvas {
         this.selection.index === displayed.selection.index;
       this.overlay
         .rect(displayed.rect.x, displayed.rect.y, displayed.rect.width, displayed.rect.height)
-        .stroke({ width: (selected ? 2 : 1) / this.scale, color: selected ? 0xffd54a : 0x41c7ff });
-      if (selected && displayed.selection.type === 'sprite') {
+        .stroke({ width: (selected ? 2 : 1) / this.scale, color: selected ? 0xffd54a : 0x5b8cff });
+      // Pivot coordinates live in SOURCE space; the atlas view is PAGE space.
+      if (selected && displayed.selection.type === 'sprite' && this.view === 'source') {
         this.drawPivotMarker(displayed);
       }
     }
@@ -243,8 +274,10 @@ export class ForgeCanvas {
   private drawPivotMarker(displayed: DisplayedRect): void {
     const sprite = this.result?.sprites[displayed.selection.index];
     if (sprite === undefined) return;
-    const cx = sprite.sourceRect.x + sprite.pivot.x * sprite.trimmedRect.width;
-    const cy = sprite.sourceRect.y + sprite.pivot.y * sprite.trimmedRect.height;
+    // Pivot is normalized against the TRIMMED CONTENT rect, which is itself
+    // in SOURCE space — use its origin, not sourceRect's.
+    const cx = sprite.trimmedRect.x + sprite.pivot.x * sprite.trimmedRect.width;
+    const cy = sprite.trimmedRect.y + sprite.pivot.y * sprite.trimmedRect.height;
     const r = 6 / this.scale;
     this.overlay
       .moveTo(cx - r, cy)
@@ -275,6 +308,7 @@ export class ForgeCanvas {
     this.scale = Math.min(40, Math.max(0.02, this.scale * Math.exp(-wheel.deltaY * 0.0015)));
     this.offsetX = wheel.offsetX - before.x * this.scale;
     this.offsetY = wheel.offsetY - before.y * this.scale;
+    this.callbacks.onZoomChanged?.(this.scale);
     this.redraw();
   };
 

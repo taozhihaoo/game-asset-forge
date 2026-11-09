@@ -82,3 +82,10 @@ export class AiDisabledError extends AiError {
     super('AI_DISABLED', message);
   }
 }
+
+/** ai.config.json is malformed or names an unsupported provider. */
+export class AiConfigError extends AiError {
+  constructor(message: string) {
+    super('AI_CONFIG_INVALID', message);
+  }
+}

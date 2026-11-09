@@ -4,11 +4,13 @@ import {
   serializePreset,
   runPipeline,
   type Pipeline,
+  type QualityReport,
+  type RasterImage,
   type Rect,
 } from '@gameasset-forge/core';
 import { decodePngInBrowser, encodePngInBrowser, joinPath } from './decode.js';
 import { ForgeCanvas, type CanvasTool } from './canvas.js';
-import { AppStore, effectivePipeline, type SourceMeta } from './state.js';
+import { AppStore, effectivePipeline, type AppState, type SourceMeta } from './state.js';
 import { logLine, renderAssets, renderProperties } from './panels.js';
 import {
   buildQualityAssets,
@@ -26,13 +28,20 @@ import {
   renderAiResults,
   runUnderstanding as runAiUnderstanding,
   type AiEntryState,
+  type AiSuggestionSet,
 } from './ai-assistant.js';
 import { createEditorPage } from './editor-page.js';
+import { getLang, initI18n, LANGUAGE_EVENT, setLang, t, type Lang } from './i18n.js';
 
 /**
  * App wiring: toolbar, drag & drop, preview loop (debounced), preset
  * load/save through the SAME schema as the CLI, and export via the
  * preload bridge. No pipeline logic lives here — core does the work.
+ *
+ * The store subscription is the single source of truth for the UI: it feeds
+ * the assets/properties panels, the canvas view/selection, the HUD and the
+ * status bar. Results (with composed atlas page bitmaps) are pushed by the
+ * preview loop, which is the only place that runs the pipeline.
  */
 
 interface LoadedSource {
@@ -46,6 +55,7 @@ interface LoadedSource {
 const store = new AppStore();
 const loaded = new Map<string, LoadedSource>();
 let previewTimer: number | undefined;
+let previewGeneration = 0;
 let editorPageRef: { refresh: () => void } | null = null;
 
 const $ = (id: string): HTMLElement => {
@@ -58,39 +68,61 @@ const canvas = new ForgeCanvas($('canvas-host'), {
   getManualRects: () => store.getState().manualRects,
   onRectCommitted: (rect: Rect) => {
     store.addManualRect(rect);
-    log($('log'), `manual rect added (${rect.width}x${rect.height}) — detect mode is now manual`);
+    log($('log'), t('log.manualRectAdded', { w: rect.width, h: rect.height }));
+    schedulePreview();
   },
   onRectChanged: (index: number, rect: Rect) => {
     store.updateManualRect(index, rect);
+    schedulePreview();
   },
   onSelectionChanged: (selection) => store.set({ selection }),
+  onZoomChanged: (zoom) => {
+    $('canvas-zoom').textContent = `${Math.round(zoom * 100)}%`;
+  },
 });
 
 function log(host: HTMLElement, line: string): void {
   logLine(host, line);
 }
 
+/** RasterImage → ImageBitmap (no PNG round-trip needed for the atlas preview). */
+async function rasterToBitmap(image: RasterImage): Promise<ImageBitmap> {
+  return createImageBitmap(
+    new ImageData(new Uint8ClampedArray(image.data), image.width, image.height),
+  );
+}
+
 // --- quality page (V2) ---------------------------------------------------------
 
-let lastQualityReport: import('@gameasset-forge/core').QualityReport | null = null;
+let lastQualityReport: QualityReport | null = null;
 
 function runQualityAnalysis(): void {
-  const state = store.getState();
-  const sources = [...loaded.entries()].map(([name, source]) => ({
-    name,
-    raster: source.image,
-    byteSize: source.byteSize,
-  }));
-  lastQualityReport = analyze(buildQualityAssets(sources), state.pipeline.quality);
-  renderQualityList($('quality-list'), lastQualityReport);
-  const report = lastQualityReport;
-  $('quality-summary').textContent = `${report.assets} asset(s) · ${report.warnings} warning(s)`;
-  log($('log'), `quality analysis: ${report.warnings} warning(s) across ${report.assets} asset(s)`);
+  try {
+    const state = store.getState();
+    const sources = [...loaded.entries()].map(([name, source]) => ({
+      name,
+      raster: source.image,
+      byteSize: source.byteSize,
+    }));
+    lastQualityReport = analyze(buildQualityAssets(sources), state.pipeline.quality);
+    renderQualityList($('quality-list'), lastQualityReport);
+    const report = lastQualityReport;
+    $('quality-summary').textContent = t('quality.summary', {
+      assets: report.assets,
+      warnings: report.warnings,
+    });
+    log($('log'), t('log.qualityDone', { warnings: report.warnings, assets: report.assets }));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    lastQualityReport = null;
+    renderQualityList($('quality-list'), null);
+    log($('log'), t('log.analysisFailed', { message }));
+  }
 }
 
 async function exportQualityReport(): Promise<void> {
   if (lastQualityReport === null) {
-    log($('log'), 'quality report: run Analyze first');
+    log($('log'), t('log.qualityNeedRun'));
     return;
   }
   const dir = await window.forge.chooseOutputDir();
@@ -104,14 +136,17 @@ async function exportQualityReport(): Promise<void> {
     joinPath(dir, 'quality_report.html'),
     new TextEncoder().encode(renderQualityReportHtml(reportJson)),
   );
-  log($('log'), `quality report exported → ${dir}`);
+  log($('log'), t('log.qualityExported', { dir }));
 }
 
 function showTab(tab: 'pipeline' | 'quality' | 'ai' | 'editor'): void {
-  $('pipeline-view').style.display = tab === 'pipeline' ? '' : 'none';
-  $('quality-view').style.display = tab === 'quality' ? '' : 'none';
-  $('ai-view').style.display = tab === 'ai' ? '' : 'none';
-  $('editor-view').style.display = tab === 'editor' ? '' : 'none';
+  const views: Record<typeof tab, string> = {
+    pipeline: 'pipeline-view',
+    quality: 'quality-view',
+    ai: 'ai-view',
+    editor: 'editor-view',
+  };
+  for (const [name, id] of Object.entries(views)) $(id).hidden = name !== tab;
   for (const id of ['tab-pipeline', 'tab-quality', 'tab-ai', 'tab-editor']) {
     $(id).classList.toggle('active', $(id).dataset.tab === tab);
   }
@@ -124,30 +159,37 @@ function showTab(tab: 'pipeline' | 'quality' | 'ai' | 'editor'): void {
 
 const aiProvider = getAiMockProvider();
 let aiStates: AiEntryState[] = [];
+let aiSuggestions: AiSuggestionSet | null = null;
+let aiAssetCount = 0;
 
 async function runAiPage(): Promise<void> {
-  const sources = [...loaded.values()].map((source) => ({
-    name: source.meta.name,
-    raster: source.image,
-    byteSize: source.byteSize,
-  }));
-  if (sources.length === 0) {
-    $('ai-summary').textContent = 'no assets loaded';
-    renderAiResults($('ai-results'), [], { onApply: () => {}, onIgnore: () => {} });
-    return;
+  try {
+    const sources = [...loaded.values()].map((source) => ({
+      name: source.meta.name,
+      raster: source.image,
+      byteSize: source.byteSize,
+    }));
+    if (sources.length === 0) {
+      $('ai-summary').textContent = t('ai.noAssets');
+      aiSuggestions = null;
+      aiStates = [];
+      aiAssetCount = 0;
+      renderAiResults($('ai-results'), [], { onApply: () => {}, onIgnore: () => {} });
+      return;
+    }
+    const understandings = await runAiUnderstanding(sources, aiProvider);
+    aiSuggestions = deriveAiFrom(
+      understandings.map((entry) => ({ name: entry.source, result: entry.result })),
+    );
+    aiStates = describeAiSuggestions(aiSuggestions);
+    aiAssetCount = understandings.length;
+    $('ai-summary').textContent = t('ai.summary', { assets: aiAssetCount, n: aiStates.length });
+    renderAiPageEntries();
+    log($('log'), t('log.aiDone', { n: aiStates.length, assets: aiAssetCount }));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    log($('log'), t('log.analysisFailed', { message }));
   }
-  const understandings = await runAiUnderstanding(sources, aiProvider);
-  const suggestions = deriveAiFrom(
-    understandings.map((entry) => ({ name: entry.source, result: entry.result })),
-  );
-  aiStates = describeAiSuggestions(suggestions);
-  $('ai-summary').textContent =
-    `${understandings.length} asset(s) · ${aiStates.length} suggestion(s)`;
-  renderAiPageEntries();
-  log(
-    $('log'),
-    `ai assistant: ${aiStates.length} suggestion(s) from ${understandings.length} asset(s) (mock, local)`,
-  );
 }
 
 function renderAiPageEntries(): void {
@@ -156,7 +198,7 @@ function renderAiPageEntries(): void {
       aiStates = aiStates.map((entry, i) =>
         i === index ? { ...entry, status: 'applied' as const } : entry,
       );
-      log($('log'), `suggestion applied: ${aiStates[index]?.text ?? ''}`);
+      log($('log'), t('log.suggestionApplied', { text: aiStates[index]?.text ?? '' }));
       renderAiPageEntries();
     },
     onIgnore: (index: number) => {
@@ -187,16 +229,27 @@ async function addSource(name: string, bytes: Uint8Array): Promise<void> {
     const sources = buildSources();
     store.set({ sources, activeSource: name, result: null, page: 0, selection: null });
     canvas.setSource(decoded.bitmap);
+    canvas.setResult(null, []);
     log(
       $('log'),
-      `loaded ${name} (${decoded.image.width}x${decoded.image.height}${decoded.image.hasAlpha ? '' : ', no alpha'})`,
+      t('log.loaded', {
+        name,
+        w: decoded.image.width,
+        h: decoded.image.height,
+        alpha: decoded.image.hasAlpha ? '' : t('assets.noAlpha'),
+      }),
     );
     schedulePreview();
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    // A failed reload must not leave a stale decoded source (and hence a
+    // dangling activeSource) behind.
+    loaded.delete(name);
+    const current = store.getState();
+    const activeSource = current.activeSource === name ? null : current.activeSource;
     store.set({
       sources: [
-        ...store.getState().sources.filter((s) => s.name !== name),
+        ...current.sources.filter((s) => s.name !== name),
         {
           name,
           status: 'error',
@@ -207,8 +260,12 @@ async function addSource(name: string, bytes: Uint8Array): Promise<void> {
           errorMessage: message,
         },
       ],
+      activeSource,
+      result: activeSource === null ? null : current.result,
     });
-    log($('log'), `failed to load ${name}: ${message}`);
+    canvas.setSource(activeSource === null ? null : (loaded.get(activeSource)?.bitmap ?? null));
+    canvas.setResult(null, []);
+    log($('log'), t('log.loadFailed', { name, message }));
   }
 }
 
@@ -237,10 +294,11 @@ function buildSources(): SourceMeta[] {
 
 function schedulePreview(): void {
   window.clearTimeout(previewTimer);
-  previewTimer = window.setTimeout(rerunPreview, 250);
+  previewTimer = window.setTimeout(() => void rerunPreview(), 250);
 }
 
-function rerunPreview(): void {
+async function rerunPreview(): Promise<void> {
+  const generation = ++previewGeneration;
   const state = store.getState();
   const active = state.activeSource;
   if (active === null) return;
@@ -248,6 +306,12 @@ function rerunPreview(): void {
   if (source === undefined) return;
   try {
     const result = runPipeline(source.image, effectivePipeline(state), { sourcePath: active });
+    const bitmaps = await Promise.all(result.pages.map(rasterToBitmap));
+    if (generation !== previewGeneration) {
+      for (const bitmap of bitmaps) bitmap.close();
+      return;
+    }
+    canvas.setResult(result, bitmaps);
     const sources = store
       .getState()
       .sources.map((s) =>
@@ -263,8 +327,9 @@ function rerunPreview(): void {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    store.set({ lastError: message });
-    log($('log'), `preview: ${message}`);
+    canvas.setResult(null, []);
+    store.set({ lastError: message, result: null });
+    log($('log'), t('log.previewError', { message }));
   }
 }
 
@@ -273,7 +338,7 @@ function rerunPreview(): void {
 async function exportOutputs(): Promise<void> {
   const state = store.getState();
   if (state.result === null || state.activeSource === null) {
-    log($('log'), 'export: nothing to export (no preview result)');
+    log($('log'), t('log.exportNothing'));
     return;
   }
   const dir = await window.forge.chooseOutputDir();
@@ -289,24 +354,28 @@ async function exportOutputs(): Promise<void> {
       joinPath(dir, 'atlas.json'),
       new TextEncoder().encode(`${JSON.stringify(result.manifest, null, 2)}\n`),
     );
-    log($('log'), `exported ${result.pages.length} page(s) + atlas.json → ${dir}`);
+    log($('log'), t('log.exported', { n: result.pages.length, dir }));
     if (state.pipeline.output.godot.enabled) {
       await window.forge.writeFile(
         joinPath(dir, `${baseName}_spriteframes.tres`),
         new TextEncoder().encode(buildSpriteFramesTres(result.manifest)),
       );
-      log($('log'), `exported ${baseName}_spriteframes.tres`);
+      log($('log'), t('log.exportedTres', { name: baseName }));
     }
     if (state.pipeline.output.unity.enabled) {
       await window.forge.writeFile(
         joinPath(dir, 'GameAssetForgeImporter.cs'),
         new TextEncoder().encode(buildUnityImporterScript()),
       );
-      log($('log'), 'exported GameAssetForgeImporter.cs');
+      log($('log'), t('log.exportedUnity'));
     }
   } catch (error) {
-    log($('log'), `export failed: ${error instanceof Error ? error.message : String(error)}`);
+    log($('log'), t('log.exportFailed', { message: errorMessage(error) }));
   }
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 // --- preset -----------------------------------------------------------------------
@@ -318,26 +387,107 @@ async function loadPresetDialog(): Promise<void> {
     const bytes = await window.forge.readFile(path);
     const pipeline = parsePreset(JSON.parse(new TextDecoder().decode(bytes)));
     store.mutateEditing(() => ({ pipeline }));
-    log($('log'), `preset loaded: ${basename(path)}`);
+    log($('log'), t('log.presetLoaded', { name: basename(path) }));
+    schedulePreview();
   } catch (error) {
-    log($('log'), `preset load failed: ${error instanceof Error ? error.message : String(error)}`);
+    log($('log'), t('log.presetLoadFailed', { message: errorMessage(error) }));
   }
 }
 
 async function savePresetDialog(): Promise<void> {
   const content = serializePreset(effectivePipeline(store.getState()));
   const saved = await window.forge.savePreset('preset.json', content);
-  if (saved !== null) log($('log'), `preset saved: ${basename(saved)}`);
+  if (saved !== null) log($('log'), t('log.presetSaved', { name: basename(saved) }));
 }
 
 function newPreset(): void {
   store.mutateEditing(() => ({ pipeline: parsePreset({ schemaVersion: 1 }), manualRects: [] }));
-  log($('log'), 'preset reset to defaults');
+  log($('log'), t('log.presetReset'));
+  schedulePreview();
+}
+
+// --- UI chrome ------------------------------------------------------------------
+
+function updateHud(state: AppState): void {
+  const hasSource = state.activeSource !== null;
+  $('canvas-empty').hidden = hasSource;
+  $('canvas-hud').hidden = !hasSource;
+  $('assets-empty').hidden = state.sources.length > 0;
+  $('assets-count').textContent = String(state.sources.length);
+  if (!hasSource) return;
+
+  const page = state.result?.atlas.pages[state.page];
+  const source = loaded.get(state.activeSource ?? '');
+  const size =
+    state.view === 'atlas'
+      ? page !== undefined
+        ? `${page.width}×${page.height}`
+        : '—'
+      : source !== undefined
+        ? `${source.image.width}×${source.image.height}`
+        : '—';
+  $('canvas-mode').textContent =
+    state.view === 'atlas' ? t('canvas.hudAtlas') : t('canvas.hudSource');
+  $('canvas-size').textContent = size;
+  $('canvas-zoom').textContent = `${Math.round(canvas.zoom * 100)}%`;
+}
+
+function updateStatusBar(state: AppState): void {
+  const ready = state.sources.filter((s) => s.status === 'ready').length;
+  const active = state.sources.find((s) => s.name === state.activeSource);
+  $('stat-assets').textContent = String(ready);
+  $('stat-sprites').textContent = String(active?.spriteCount ?? 0);
+  $('stat-pages').textContent = String(state.result?.atlas.pages.length ?? 0);
+  const message = $('status-message');
+  if (state.lastError !== null) {
+    message.textContent = state.lastError;
+    message.classList.add('status-error');
+  } else {
+    message.textContent = ready === 0 ? t('status.noAssets') : t('status.ready');
+    message.classList.remove('status-error');
+  }
+  $('status-lang').textContent = getLang() === 'zh' ? '中文' : 'EN';
+}
+
+function renderAll(): void {
+  // Re-render everything that contains translated text. store.set({}) emits
+  // to the subscription, which owns panels/HUD/status/page selects.
+  store.set({});
+  renderQualityList($('quality-list'), lastQualityReport);
+  if (lastQualityReport !== null) {
+    $('quality-summary').textContent = t('quality.summary', {
+      assets: lastQualityReport.assets,
+      warnings: lastQualityReport.warnings,
+    });
+  }
+  if (aiSuggestions !== null) {
+    const statuses = aiStates.map((entry) => entry.status);
+    aiStates = describeAiSuggestions(aiSuggestions).map((entry, i) => ({
+      ...entry,
+      status: statuses[i] ?? 'open',
+    }));
+    $('ai-summary').textContent = t('ai.summary', { assets: aiAssetCount, n: aiStates.length });
+    renderAiPageEntries();
+  } else {
+    renderAiResults($('ai-results'), [], { onApply: () => {}, onIgnore: () => {} });
+  }
+  editorPageRef?.refresh();
+}
+
+function isEditingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return (
+    target.tagName === 'INPUT' ||
+    target.tagName === 'TEXTAREA' ||
+    target.tagName === 'SELECT' ||
+    target.isContentEditable
+  );
 }
 
 // --- boot ----------------------------------------------------------------------------
 
 async function boot(): Promise<void> {
+  initI18n();
   await canvas.init();
 
   store.subscribe(() => {
@@ -346,6 +496,7 @@ async function boot(): Promise<void> {
       store.set({ activeSource: name, result: null, selection: null, page: 0 });
       const source = loaded.get(name);
       canvas.setSource(source?.bitmap ?? null);
+      canvas.setResult(null, []);
       schedulePreview();
     });
     renderProperties($('properties-body'), state, {
@@ -394,16 +545,24 @@ async function boot(): Promise<void> {
     });
     const pageSelect = $('page-select') as HTMLSelectElement;
     const pages = state.result?.atlas.pages.length ?? 0;
-    pageSelect.hidden = state.view !== 'atlas' || pages <= 1;
+    const showPages = state.view === 'atlas' && pages > 1;
+    $('page-wrap').hidden = !showPages;
+    pageSelect.hidden = !showPages;
     if (pageSelect.options.length !== pages) {
       pageSelect.replaceChildren(
-        ...Array.from({ length: pages }, (_, i) => new Option(`page ${i}`, String(i))),
+        ...Array.from(
+          { length: pages },
+          (_, i) => new Option(`${t('canvas.page')} ${i}`, String(i)),
+        ),
       );
     }
-    pageSelect.value = String(Math.min(state.page, pages - 1));
+    if (pages > 0) pageSelect.value = String(Math.min(state.page, pages - 1));
+    canvas.setView(state.view, state.page);
     canvas.setSelection(state.selection);
     canvas.setManualRects(state.manualRects);
-    void state.lastError; // surfaced via log + assets panel
+    updateHud(state);
+    updateStatusBar(state);
+    void state.lastError; // surfaced via log + status bar
   });
 
   // toolbar
@@ -417,13 +576,34 @@ async function boot(): Promise<void> {
   $('btn-preset-load').addEventListener('click', () => void loadPresetDialog());
   $('btn-preset-save').addEventListener('click', () => void savePresetDialog());
   $('btn-undo').addEventListener('click', () => {
-    if (!store.undo()) log($('log'), 'undo: nothing to undo');
+    if (!store.undo()) log($('log'), t('log.undoNothing'));
     schedulePreview();
   });
   $('btn-fit').addEventListener('click', () => canvas.fit());
   $('btn-100').addEventListener('click', () => canvas.zoom100());
 
-  // quality page
+  // log panel
+  $('btn-log-clear').addEventListener('click', () => {
+    $('log').textContent = '';
+  });
+  $('btn-log-toggle').addEventListener('click', () => {
+    $('log-panel').classList.toggle('collapsed');
+  });
+
+  // language switch
+  const langSelect = $('lang-select') as HTMLSelectElement;
+  langSelect.value = getLang();
+  langSelect.addEventListener('change', () => {
+    const lang = langSelect.value as Lang;
+    setLang(lang);
+    log($('log'), t('log.language', { lang: lang === 'zh' ? t('lang.zh') : t('lang.en') }));
+  });
+  document.addEventListener(LANGUAGE_EVENT, () => {
+    langSelect.value = getLang();
+    renderAll();
+  });
+
+  // quality / ai / editor pages
   showTab('pipeline');
   $('tab-pipeline').addEventListener('click', () => showTab('pipeline'));
   $('tab-quality').addEventListener('click', () => showTab('quality'));
@@ -479,7 +659,7 @@ async function boot(): Promise<void> {
               new TextEncoder().encode(`${JSON.stringify(project, null, 2)}\n`),
             );
           })
-          .then(() => log($('log'), '.forge exported'));
+          .then(() => log($('log'), t('log.forgeExported')));
       },
     },
   );
@@ -497,18 +677,11 @@ async function boot(): Promise<void> {
 
   const viewSelect = $('view-select') as HTMLSelectElement;
   viewSelect.addEventListener('change', () => {
-    const view = viewSelect.value as 'source' | 'atlas';
-    store.set({ view });
-    if (view === 'atlas') {
-      const source = store.getState().activeSource;
-      if (source !== null) canvas.setSource(loaded.get(source)?.bitmap ?? null);
-    }
-    canvas.setView(view, store.getState().page);
+    store.set({ view: viewSelect.value as 'source' | 'atlas', page: 0 });
   });
   const pageSelect = $('page-select') as HTMLSelectElement;
   pageSelect.addEventListener('change', () => {
     store.set({ page: Number(pageSelect.value) });
-    canvas.setView(store.getState().view, store.getState().page);
   });
 
   // drag & drop (renderer-side: no fs needed, File.arrayBuffer is sandbox-safe)
@@ -523,11 +696,12 @@ async function boot(): Promise<void> {
     })();
   });
 
-  // keyboard
+  // keyboard — never steal keys from text inputs, selects or editable content.
   document.addEventListener('keydown', (e) => {
+    if (isEditingTarget(e.target)) return;
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
       e.preventDefault();
-      if (!store.undo()) log($('log'), 'undo: nothing to undo');
+      if (!store.undo()) log($('log'), t('log.undoNothing'));
       schedulePreview();
       return;
     }
@@ -544,7 +718,8 @@ async function boot(): Promise<void> {
     if (e.key === 'r' || e.key === 'R') setTool('rect', 'btn-tool-rect');
   });
 
-  log($('log'), 'GameAsset Forge ready — drop PNG files or use Open');
+  store.set({});
+  log($('log'), t('log.ready'));
 }
 
 void boot();

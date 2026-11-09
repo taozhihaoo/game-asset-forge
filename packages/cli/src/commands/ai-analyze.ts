@@ -24,8 +24,9 @@ import { JsonFileCacheStore } from '../ai-cache.js';
  * the source files or the deterministic pipeline outputs (C3/C6).
  *
  * Cost control (C4): results are cached by
- * imageHash + promptVersion + provider + model; a cache hit costs zero API
- * calls, so re-running the same folder is free.
+ * imageHash + name + promptVersion + provider + model; a cache hit costs zero
+ * API calls, so re-running the same folder is free. The name is part of the
+ * key because the default mock provider derives its result from the name.
  */
 
 export type AiLog = (line: string) => void;
@@ -93,11 +94,13 @@ export async function runAiAnalyze(options: AiAnalyzeOptions): Promise<AiAnalyze
       assertPngFile(file.relativePath);
       const buffer = readFileSync(file.absolutePath);
       const raster = decodePng(buffer, file.relativePath);
+      const promptVersion = options.config.promptVersion ?? PROMPT_VERSION;
       const key = cacheKey({
         imageHash: rasterHash64(raster),
         providerId: provider.id,
         model: provider.model,
-        promptVersion: options.config.promptVersion ?? PROMPT_VERSION,
+        promptVersion,
+        name: file.relativePath,
       });
 
       let result: UnderstandingResult;
@@ -108,7 +111,9 @@ export async function runAiAnalyze(options: AiAnalyzeOptions): Promise<AiAnalyze
         log(`cache hit ${file.relativePath}`);
       } else {
         cacheMisses += 1;
-        result = await understandAsset({ image: raster, name: file.relativePath }, provider);
+        result = await understandAsset({ image: raster, name: file.relativePath }, provider, {
+          promptVersion,
+        });
         cache.set(key, result);
         log(`understood ${file.relativePath}`);
       }

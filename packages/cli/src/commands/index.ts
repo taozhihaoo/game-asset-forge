@@ -144,7 +144,7 @@ export function runProcess(
   if (!existsSync(target.absolutePath)) throw inputNotFound(target.absolutePath);
   const image = readPngFile(target.absolutePath, target.relativePath);
   const result = runPipeline(image, pipeline, { sourcePath: target.relativePath });
-  const written = writePipelineOutputs(result, outputDir);
+  const written = writePipelineOutputs(result, outputDir, pipeline.output.format);
   const outputFiles: string[] = written.map((w) => w.file);
 
   // Engine exporters consume the manifest in the CLI layer; core stays blind.
@@ -201,6 +201,7 @@ export interface BatchResult {
 export function runBatch(options: BatchOptions): BatchResult {
   const log = options.log ?? defaultLog;
   const startedAt = Date.now();
+  if (!existsSync(options.root)) throw inputNotFound(options.root);
   const files = discoverPngFiles({
     root: options.root,
     recursive: options.pipeline.input.recursive,

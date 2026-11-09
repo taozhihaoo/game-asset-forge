@@ -1,6 +1,24 @@
 extends SceneTree
 
-const RESULT_PATH = "E:/WorkSpace/Game_Asset_Forge/temp/cutout-smoke-result.txt"
+# Result path is configurable — no machine-specific absolute path is baked in.
+# Set GAF_SMOKE_RESULT to an absolute path, or accept the default file next to
+# the Godot project. A result that cannot be written must fail loudly.
+func _result_path() -> String:
+	var path: String = OS.get_environment("GAF_SMOKE_RESULT")
+	if path.is_empty():
+		path = ProjectSettings.globalize_path("res://").path_join("cutout-smoke-result.txt")
+	return path
+
+func _write_result(verdict: String) -> bool:
+	var path: String = _result_path()
+	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
+	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		push_error("CUTOUT_SMOKE_FAIL: cannot write result to %s" % [path])
+		return false
+	file.store_string(verdict)
+	file.close()
+	return true
 
 var frames = 0
 var skeleton: Skeleton2D
@@ -54,9 +72,6 @@ func _finish() -> void:
 		verdict = "FAIL " + "; ".join(failures)
 		for failure in failures:
 			printerr("CUTOUT_SMOKE_FAIL: ", failure)
-	var file: FileAccess = FileAccess.open(RESULT_PATH, FileAccess.WRITE)
-	if file != null:
-		file.store_string(verdict)
-		file.close()
-	quit(0 if failures.is_empty() else 1)
+	var ok: bool = _write_result(verdict)
+	quit(0 if failures.is_empty() and ok else 1)
 

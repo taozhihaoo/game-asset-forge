@@ -2,94 +2,521 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>GameAsset Forge</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title data-i18n="app.title">GameAsset Forge</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <header id="toolbar">
-      <button id="btn-open">Open…</button>
-      <span class="sep"></span>
-      <button id="btn-preset-new" title="Reset preset to defaults">New Preset</button>
-      <button id="btn-preset-load">Load Preset…</button>
-      <button id="btn-preset-save">Save Preset…</button>
-      <span class="sep"></span>
-      <button id="btn-tool-select" title="Select sprites (V)">Select (V)</button>
-      <button id="btn-tool-pan" title="Pan (P, or middle-drag / shift-drag)">Pan (P)</button>
-      <button id="btn-tool-rect" title="Draw manual rects (R)">Add Rect (R)</button>
-      <button id="btn-fit">Fit</button>
-      <button id="btn-100">100%</button>
-      <button id="btn-undo" title="Ctrl+Z">Undo</button>
-      <span class="sep"></span>
-      <select id="view-select">
-        <option value="source">Before (source)</option>
-        <option value="atlas">After (atlas)</option>
-      </select>
-      <select id="page-select" hidden></select>
-      <span class="spacer"></span>
-      <button id="btn-export" class="primary">Export…</button>
+    <!-- icon sprite: one definition, referenced by every button -->
+    <svg class="svg-sprite" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+      <symbol id="i-logo" viewBox="0 0 24 24">
+        <path d="M12 2.5 21 7v10l-9 4.5L3 17V7l9-4.5Z" />
+        <path d="M3 7l9 4.5L21 7M12 11.5V21.5" />
+        <path d="M7.5 4.75 16.5 9.25" />
+      </symbol>
+      <symbol id="i-open" viewBox="0 0 24 24">
+        <path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4l2 2.2h7A1.5 1.5 0 0 1 19 9.7" />
+        <path d="M3 9.5h17.2l-1.9 8.1a1.6 1.6 0 0 1-1.55 1.2H5.1a1.6 1.6 0 0 1-1.56-1.24L2 10.6" />
+      </symbol>
+      <symbol id="i-file-new" viewBox="0 0 24 24">
+        <path
+          d="M13.5 3H6.5A1.5 1.5 0 0 0 5 4.5v15A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5V8.5L13.5 3Z"
+        />
+        <path d="M13.5 3v5.5H19M12 12v5M9.5 14.5h5" />
+      </symbol>
+      <symbol id="i-folder" viewBox="0 0 24 24">
+        <path
+          d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4.2l1.8 2.2h9A1.5 1.5 0 0 1 21 8.7v9.8a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5v-12Z"
+        />
+      </symbol>
+      <symbol id="i-save" viewBox="0 0 24 24">
+        <path d="M5 3h11l3 3v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" />
+        <path d="M8 3v5h7V3M8 21v-7h8v7" />
+      </symbol>
+      <symbol id="i-cursor" viewBox="0 0 24 24">
+        <path d="m5 3 6.5 17 2.2-6.6 6.8-2.2L5 3Z" />
+      </symbol>
+      <symbol id="i-hand" viewBox="0 0 24 24">
+        <path
+          d="M8 12V5.5a1.4 1.4 0 0 1 2.8 0V11m0-1V4.6a1.4 1.4 0 0 1 2.8 0V11m0-.6V6a1.4 1.4 0 0 1 2.8 0v6.5"
+        />
+        <path d="M8 12v-1.2a1.4 1.4 0 0 0-2.8 0v4.4c0 3.6 2.5 6 6 6h1.5c3.5 0 6.2-2.6 6.2-6.2V12" />
+      </symbol>
+      <symbol id="i-rect" viewBox="0 0 24 24">
+        <rect x="4" y="5" width="16" height="14" rx="1.5" stroke-dasharray="3 2.5" />
+        <path d="M17.5 15.5h3v3.5" />
+      </symbol>
+      <symbol id="i-fit" viewBox="0 0 24 24">
+        <path
+          d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15"
+        />
+      </symbol>
+      <symbol id="i-zoom" viewBox="0 0 24 24">
+        <circle cx="10.5" cy="10.5" r="6.5" />
+        <path d="m15.5 15.5 4.5 4.5M8 10.5h5M10.5 8v5" />
+      </symbol>
+      <symbol id="i-undo" viewBox="0 0 24 24">
+        <path d="M9 7 4.5 11 9 15" />
+        <path d="M4.5 11h9a5.5 5.5 0 0 1 0 11h-2" />
+      </symbol>
+      <symbol id="i-download" viewBox="0 0 24 24">
+        <path d="M12 3.5v11m0 0 4-4m-4 4-4-4" />
+        <path d="M4.5 17.5v1.2a1.8 1.8 0 0 0 1.8 1.8h11.4a1.8 1.8 0 0 0 1.8-1.8v-1.2" />
+      </symbol>
+      <symbol id="i-image" viewBox="0 0 24 24">
+        <rect x="3" y="4" width="18" height="16" rx="2" />
+        <circle cx="8.5" cy="9" r="1.6" />
+        <path d="m4 17 5-4.5 3.5 3 3-2.5 4.5 4" />
+      </symbol>
+      <symbol id="i-chart" viewBox="0 0 24 24">
+        <path d="M4 20V4M4 20h16" />
+        <path d="M8 16v-4M12.5 16V8M17 16v-6" />
+      </symbol>
+      <symbol id="i-sparkles" viewBox="0 0 24 24">
+        <path d="m12 3 1.7 4.8L18.5 9.5l-4.8 1.7L12 16l-1.7-4.8L5.5 9.5l4.8-1.7L12 3Z" />
+        <path
+          d="m18.5 15 .8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2ZM5.5 3l.6 1.7 1.7.6-1.7.6L5.5 7.6l-.6-1.7-1.7-.6 1.7-.6L5.5 3Z"
+        />
+      </symbol>
+      <symbol id="i-layers" viewBox="0 0 24 24">
+        <path d="m12 3 9 5-9 5-9-5 9-5Z" />
+        <path d="m3 12 9 5 9-5M3 16.5l9 5 9-5" />
+      </symbol>
+      <symbol id="i-globe" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9" />
+        <path
+          d="M3 12h18M12 3c2.5 2.5 3.8 5.6 3.8 9S14.5 18.5 12 21c-2.5-2.5-3.8-5.6-3.8-9S9.5 5.5 12 3Z"
+        />
+      </symbol>
+      <symbol id="i-terminal" viewBox="0 0 24 24">
+        <rect x="3" y="4" width="18" height="16" rx="2" />
+        <path d="m7 9 3 3-3 3M12.5 15h4.5" />
+      </symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24">
+        <path
+          d="M4.5 7h15M9 7V4.5h6V7M6.5 7l.8 12a1.5 1.5 0 0 0 1.5 1.4h6.4a1.5 1.5 0 0 0 1.5-1.4l.8-12"
+        />
+        <path d="M10 11v6M14 11v6" />
+      </symbol>
+      <symbol id="i-chevron" viewBox="0 0 24 24">
+        <path d="m8 10 4 4 4-4" />
+      </symbol>
+      <symbol id="i-check" viewBox="0 0 24 24">
+        <path d="m5 12.5 4.5 4.5L19 7.5" />
+      </symbol>
+      <symbol id="i-play" viewBox="0 0 24 24">
+        <path d="M8 5.5v13l10-6.5-10-6.5Z" />
+      </symbol>
+      <symbol id="i-brush-add" viewBox="0 0 24 24">
+        <path d="M12 5v14M5 12h14" />
+      </symbol>
+      <symbol id="i-brush-erase" viewBox="0 0 24 24">
+        <path d="M5 12h14" />
+      </symbol>
+    </svg>
+
+    <!-- title bar -->
+    <header id="titlebar" class="titlebar">
+      <div class="brand">
+        <div class="brand-mark">
+          <svg class="icon"><use href="#i-logo" /></svg>
+        </div>
+        <div class="brand-text">
+          <div class="brand-name" data-i18n="app.title">GameAsset Forge</div>
+          <div class="brand-sub" data-i18n="app.subtitle">Deterministic 2D asset pipeline</div>
+        </div>
+        <span class="brand-badge" data-i18n="app.badge">LOCAL-FIRST</span>
+      </div>
+      <div class="titlebar-right">
+        <span class="titlebar-tag"
+          ><span class="live-dot"></span><span data-i18n="status.offline">Offline</span></span
+        >
+        <div class="lang-switch" data-i18n-title="lang.label" title="Language">
+          <svg class="icon"><use href="#i-globe" /></svg>
+          <select id="lang-select" aria-label="Language">
+            <option value="en" data-i18n="lang.en">English</option>
+            <option value="zh" data-i18n="lang.zh">简体中文</option>
+          </select>
+          <svg class="icon chevron"><use href="#i-chevron" /></svg>
+        </div>
+      </div>
     </header>
-    <nav id="tabs">
-      <button id="tab-pipeline" class="tab active" data-tab="pipeline">Pipeline</button>
-      <button id="tab-quality" class="tab" data-tab="quality">Quality</button>
-      <button id="tab-ai" class="tab" data-tab="ai">AI Assistant</button>
-      <button id="tab-editor" class="tab" data-tab="editor">Editor</button>
+
+    <!-- toolbar -->
+    <header id="toolbar" class="toolbar">
+      <div class="tool-cluster">
+        <button
+          id="btn-open"
+          class="btn"
+          data-i18n-title="toolbar.openTitle"
+          title="Open PNG sprite sheets…"
+        >
+          <svg class="icon"><use href="#i-open" /></svg><span data-i18n="toolbar.open">Open</span>
+        </button>
+        <button
+          id="btn-preset-new"
+          class="btn"
+          data-i18n-title="toolbar.newPresetTitle"
+          title="Reset preset to defaults"
+        >
+          <svg class="icon"><use href="#i-file-new" /></svg
+          ><span data-i18n="toolbar.newPreset">New</span>
+        </button>
+        <button
+          id="btn-preset-load"
+          class="btn"
+          data-i18n-title="toolbar.loadPresetTitle"
+          title="Load a preset JSON file"
+        >
+          <svg class="icon"><use href="#i-folder" /></svg
+          ><span data-i18n="toolbar.loadPreset">Load</span>
+        </button>
+        <button
+          id="btn-preset-save"
+          class="btn"
+          data-i18n-title="toolbar.savePresetTitle"
+          title="Save the current preset as JSON"
+        >
+          <svg class="icon"><use href="#i-save" /></svg
+          ><span data-i18n="toolbar.savePreset">Save</span>
+        </button>
+      </div>
+
+      <span class="sep"></span>
+
+      <div class="tool-cluster">
+        <button
+          id="btn-tool-select"
+          class="btn tool-btn"
+          data-i18n-title="toolbar.selectTitle"
+          title="Select sprites (V)"
+        >
+          <svg class="icon"><use href="#i-cursor" /></svg
+          ><span data-i18n="toolbar.select">Select</span>
+        </button>
+        <button
+          id="btn-tool-pan"
+          class="btn tool-btn"
+          data-i18n-title="toolbar.panTitle"
+          title="Pan (P, middle-drag or shift-drag)"
+        >
+          <svg class="icon"><use href="#i-hand" /></svg><span data-i18n="toolbar.pan">Pan</span>
+        </button>
+        <button
+          id="btn-tool-rect"
+          class="btn tool-btn"
+          data-i18n-title="toolbar.rectTitle"
+          title="Draw manual rectangles (R)"
+        >
+          <svg class="icon"><use href="#i-rect" /></svg
+          ><span data-i18n="toolbar.rect">Add Rect</span>
+        </button>
+      </div>
+
+      <span class="sep"></span>
+
+      <div class="tool-cluster">
+        <button
+          id="btn-fit"
+          class="btn icon-only"
+          data-i18n-title="toolbar.fitTitle"
+          title="Fit image to view"
+        >
+          <svg class="icon"><use href="#i-fit" /></svg>
+        </button>
+        <button
+          id="btn-100"
+          class="btn zoom-btn"
+          data-i18n-title="toolbar.zoom100Title"
+          title="Reset zoom to 100%"
+          data-i18n="toolbar.zoom100"
+        >
+          100%
+        </button>
+        <button
+          id="btn-undo"
+          class="btn icon-only"
+          data-i18n-title="toolbar.undoTitle"
+          title="Undo the last edit (Ctrl+Z)"
+        >
+          <svg class="icon"><use href="#i-undo" /></svg>
+        </button>
+      </div>
+
+      <span class="spacer"></span>
+
+      <div class="tool-cluster view-cluster">
+        <span class="tool-label" data-i18n="toolbar.viewLabel">Preview</span>
+        <div class="select-wrap">
+          <select id="view-select" aria-label="Preview mode">
+            <option value="source" data-i18n="view.before">Before · Source</option>
+            <option value="atlas" data-i18n="view.after">After · Atlas</option>
+          </select>
+          <svg class="icon chevron"><use href="#i-chevron" /></svg>
+        </div>
+        <div class="select-wrap" id="page-wrap" hidden>
+          <select id="page-select" aria-label="Atlas page"></select>
+          <svg class="icon chevron"><use href="#i-chevron" /></svg>
+        </div>
+      </div>
+
+      <button
+        id="btn-export"
+        class="btn btn-primary"
+        data-i18n-title="toolbar.exportTitle"
+        title="Export atlas, manifest and engine resources"
+      >
+        <svg class="icon"><use href="#i-download" /></svg
+        ><span data-i18n="toolbar.export">Export</span>
+      </button>
+    </header>
+
+    <!-- tabs -->
+    <nav id="tabs" class="tabs">
+      <button id="tab-pipeline" class="tab active" data-tab="pipeline">
+        <svg class="icon"><use href="#i-layers" /></svg
+        ><span data-i18n="tab.pipeline">Pipeline</span>
+      </button>
+      <button id="tab-quality" class="tab" data-tab="quality">
+        <svg class="icon"><use href="#i-chart" /></svg><span data-i18n="tab.quality">Quality</span>
+      </button>
+      <button id="tab-ai" class="tab" data-tab="ai">
+        <svg class="icon"><use href="#i-sparkles" /></svg
+        ><span data-i18n="tab.ai">AI Assistant</span>
+      </button>
+      <button id="tab-editor" class="tab" data-tab="editor">
+        <svg class="icon"><use href="#i-image" /></svg><span data-i18n="tab.editor">Editor</span>
+      </button>
+      <span class="tabs-spacer"></span>
     </nav>
-    <main>
-      <div id="pipeline-view">
-        <aside id="assets-panel">
-          <h2>Assets</h2>
-          <ul id="assets-list"></ul>
-          <p class="hint">drop PNG files anywhere</p>
+
+    <main id="main">
+      <!-- pipeline -->
+      <div id="pipeline-view" class="pipeline-view">
+        <aside id="assets-panel" class="panel panel-left">
+          <div class="panel-head">
+            <h2 data-i18n="panel.assets">Assets</h2>
+            <span id="assets-count" class="count-badge">0</span>
+          </div>
+          <ul id="assets-list" class="assets-list"></ul>
+          <div id="assets-empty" class="panel-empty">
+            <div class="panel-empty-icon">
+              <svg class="icon"><use href="#i-image" /></svg>
+            </div>
+            <p data-i18n="assets.empty">No assets loaded yet</p>
+            <small data-i18n="assets.emptyHint">Use Open… or drag a sprite sheet here</small>
+          </div>
+          <div class="panel-foot">
+            <svg class="icon"><use href="#i-download" /></svg>
+            <span data-i18n="assets.dropHint">Drop PNG files anywhere in the window</span>
+          </div>
         </aside>
-        <section id="canvas-host"></section>
-        <aside id="properties-panel">
-          <h2>Properties</h2>
-          <div id="properties-body"></div>
+
+        <section id="canvas-host" class="canvas-host">
+          <div id="canvas-empty" class="canvas-empty">
+            <div class="empty-art">
+              <div class="empty-art-grid"></div>
+              <svg class="icon"><use href="#i-image" /></svg>
+            </div>
+            <h3 data-i18n="canvas.emptyTitle">Your canvas is ready</h3>
+            <p data-i18n="canvas.emptyHint">
+              Drop a PNG sprite sheet to start slicing, packing and exporting.
+            </p>
+            <div class="shortcut-row" data-i18n="canvas.shortcuts">
+              V Select · P Pan · R Rect · Scroll Zoom
+            </div>
+          </div>
+          <div id="canvas-hud" class="canvas-hud" hidden>
+            <span id="canvas-mode" class="hud-tag" data-i18n="canvas.hudSource">SOURCE</span>
+            <span id="canvas-size" class="hud-size">—</span>
+            <span class="hud-divider"></span>
+            <span id="canvas-zoom" class="hud-zoom">100%</span>
+          </div>
+        </section>
+
+        <aside id="properties-panel" class="panel panel-right">
+          <div class="panel-head">
+            <h2 data-i18n="panel.properties">Properties</h2>
+            <span class="panel-head-icon"
+              ><svg class="icon"><use href="#i-fit" /></svg
+            ></span>
+          </div>
+          <div id="properties-body" class="properties-body"></div>
         </aside>
       </div>
-      <div id="quality-view" hidden>
-        <div class="quality-toolbar">
-          <button id="btn-analyze">Analyze</button>
-          <button id="btn-export-report">Export Report…</button>
-          <span id="quality-summary"></span>
+
+      <!-- quality -->
+      <div id="quality-view" class="page-view" hidden>
+        <div class="page-toolbar">
+          <div class="page-actions">
+            <button id="btn-analyze" class="btn btn-accent">
+              <svg class="icon"><use href="#i-play" /></svg
+              ><span data-i18n="quality.analyze">Analyze</span>
+            </button>
+            <button id="btn-export-report" class="btn">
+              <svg class="icon"><use href="#i-download" /></svg
+              ><span data-i18n="quality.exportReport">Export Report</span>
+            </button>
+          </div>
+          <span id="quality-summary" class="page-summary"></span>
         </div>
-        <ul id="quality-list"></ul>
+        <ul id="quality-list" class="card-list"></ul>
+        <div class="rules-card">
+          <div class="rules-head">
+            <span class="rules-icon"
+              ><svg class="icon"><use href="#i-check" /></svg
+            ></span>
+            <h3 data-i18n="quality.rulesTitle">Deterministic rules</h3>
+          </div>
+          <p data-i18n="quality.rulesHint">
+            Five checks run locally over every loaded asset. Detection first, suggestion second —
+            nothing is modified without your confirmation.
+          </p>
+          <ul class="rules-list">
+            <li>
+              <span class="rule-index">01</span
+              ><span data-i18n="quality.ruleNaming"
+                >naming_convention — non-descriptive filenames</span
+              >
+            </li>
+            <li>
+              <span class="rule-index">02</span
+              ><span data-i18n="quality.ruleTransparency"
+                >transparent_area — mostly-unused canvas</span
+              >
+            </li>
+            <li>
+              <span class="rule-index">03</span
+              ><span data-i18n="quality.ruleSize"
+                >size_mismatch — inconsistent frame sizes within a group</span
+              >
+            </li>
+            <li>
+              <span class="rule-index">04</span
+              ><span data-i18n="quality.ruleDuplicate"
+                >duplicate_frames — exact hash + dHash 8×8 near matches</span
+              >
+            </li>
+            <li>
+              <span class="rule-index">05</span
+              ><span data-i18n="quality.rulePivot"
+                >pivot_check — pivots away from bottom-center</span
+              >
+            </li>
+          </ul>
+        </div>
       </div>
-      <div id="ai-view" hidden>
-        <p class="ai-banner">
-          Mock provider — every analysis runs locally and no data leaves this machine. Cloud
-          providers upload images to third-party services and must be explicitly enabled via
-          <code>ai.config.json</code> (CLI).
-        </p>
-        <div class="quality-toolbar">
-          <button id="btn-ai-analyze">Analyze with AI</button>
-          <span id="ai-provider-badge">provider: mock (local)</span>
-          <span id="ai-summary"></span>
+
+      <!-- ai assistant -->
+      <div id="ai-view" class="page-view" hidden>
+        <div class="notice-card">
+          <div class="notice-icon">
+            <svg class="icon"><use href="#i-sparkles" /></svg>
+          </div>
+          <p class="ai-banner" data-i18n="ai.banner">
+            Mock provider — every analysis runs locally and no data leaves this machine. Cloud
+            providers upload images to third-party services and must be explicitly enabled via
+            ai.config.json (CLI).
+          </p>
         </div>
-        <div id="ai-results"></div>
+        <div class="page-toolbar">
+          <div class="page-actions">
+            <button id="btn-ai-analyze" class="btn btn-accent">
+              <svg class="icon"><use href="#i-sparkles" /></svg
+              ><span data-i18n="ai.analyze">Analyze with AI</span>
+            </button>
+          </div>
+          <span id="ai-provider-badge" class="pill" data-i18n="ai.provider"
+            >provider: mock (local)</span
+          >
+          <span id="ai-summary" class="page-summary"></span>
+        </div>
+        <div id="ai-results" class="card-list"></div>
       </div>
-      <div id="editor-view" hidden>
-        <div class="quality-toolbar">
-          <button id="btn-ed-propose">Propose Layers</button>
-          <button id="btn-ed-export">Export .forge</button>
-          <button id="btn-ed-undo">Undo</button>
-          <button id="btn-ed-brush-add">Brush +</button>
-          <button id="btn-ed-brush-erase">Brush −</button>
-          <span id="ed-summary"></span>
+
+      <!-- editor -->
+      <div id="editor-view" class="page-view" hidden>
+        <div class="page-toolbar">
+          <div class="page-actions">
+            <button id="btn-ed-propose" class="btn btn-accent">
+              <svg class="icon"><use href="#i-layers" /></svg
+              ><span data-i18n="editor.propose">Propose Layers</span>
+            </button>
+            <button id="btn-ed-export" class="btn">
+              <svg class="icon"><use href="#i-download" /></svg
+              ><span data-i18n="editor.exportForge">Export .forge</span>
+            </button>
+            <button id="btn-ed-undo" class="btn">
+              <svg class="icon"><use href="#i-undo" /></svg
+              ><span data-i18n="editor.undo">Undo</span>
+            </button>
+            <span class="sep"></span>
+            <button id="btn-ed-brush-add" class="btn" title="Add to mask">
+              <svg class="icon"><use href="#i-brush-add" /></svg
+              ><span data-i18n="editor.brushAdd">Brush +</span>
+            </button>
+            <button id="btn-ed-brush-erase" class="btn" title="Erase from mask">
+              <svg class="icon"><use href="#i-brush-erase" /></svg
+              ><span data-i18n="editor.brushErase">Brush −</span>
+            </button>
+          </div>
+          <span id="ed-summary" class="page-summary"></span>
         </div>
-        <ul id="ed-layers" class="quality-list"></ul>
-        <canvas
-          id="ed-canvas"
-          width="256"
-          height="256"
-          style="image-rendering: pixelated; border: 1px solid #333; max-width: 100%"
-        ></canvas>
+        <div class="editor-layout">
+          <ul id="ed-layers" class="layer-list"></ul>
+          <div class="editor-canvas-wrap">
+            <canvas id="ed-canvas" width="256" height="256"></canvas>
+          </div>
+        </div>
       </div>
     </main>
-    <footer id="log-panel">
-      <h2>Log</h2>
-      <pre id="log"></pre>
+
+    <!-- log -->
+    <footer id="log-panel" class="log-panel">
+      <div class="log-head">
+        <div class="log-title">
+          <svg class="icon"><use href="#i-terminal" /></svg>
+          <h2 data-i18n="panel.log">Log</h2>
+        </div>
+        <div class="log-actions">
+          <button id="btn-log-clear" class="icon-btn" data-i18n-title="log.clear" title="Clear">
+            <svg class="icon"><use href="#i-trash" /></svg>
+          </button>
+          <button
+            id="btn-log-toggle"
+            class="icon-btn"
+            data-i18n-title="log.toggle"
+            title="Toggle log"
+          >
+            <svg class="icon"><use href="#i-chevron" /></svg>
+          </button>
+        </div>
+      </div>
+      <pre id="log" class="log-body"></pre>
     </footer>
+
+    <!-- status bar -->
+    <div id="status-bar" class="status-bar">
+      <div class="status-left">
+        <span class="status-dot"></span>
+        <span id="status-message" data-i18n="status.ready">Ready</span>
+      </div>
+      <div class="status-right">
+        <span class="status-metric"
+          ><b id="stat-assets">0</b> <span data-i18n="status.assets">Assets</span></span
+        >
+        <span class="status-metric"
+          ><b id="stat-sprites">0</b> <span data-i18n="status.sprites">Sprites</span></span
+        >
+        <span class="status-metric"
+          ><b id="stat-pages">0</b> <span data-i18n="status.pages">Pages</span></span
+        >
+        <span class="status-divider"></span>
+        <span id="status-lang" class="status-lang">EN</span>
+        <span class="status-version" data-i18n="status.version">v0.1.0</span>
+      </div>
+    </div>
+
     <script src="./renderer.js"></script>
   </body>
 </html>

@@ -47,6 +47,9 @@ const app = await _electron.launch({
 const failures = [];
 
 try {
+  // Screenshots below are written before the end of the run, so the temp
+  // directory must exist up front (it used to be created near the very end).
+  mkdirSync(join(root, 'temp'), { recursive: true });
   const win = await app.firstWindow();
   await win.waitForSelector('#assets-list', { timeout: 20000 });
 
@@ -114,7 +117,6 @@ try {
   const log = await win.textContent('#log');
   if (!log.includes('loaded demo_sheet.png')) failures.push('log missing load line');
 
-  mkdirSync('temp', { recursive: true });
   await win.screenshot({ path: join(root, 'temp', 'gui-verification.png') });
 } catch (error) {
   fail(error instanceof Error ? `${error.message}\n${error.stack ?? ''}` : String(error));

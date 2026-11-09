@@ -1,5 +1,6 @@
 import type { UnderstandInvocation, VisionProvider } from '../types.js';
 import { AiProviderError } from '../types.js';
+import { parseJsonPayload } from '../schemas/understanding.js';
 
 /**
  * OpenAI-compatible cloud vision provider (V3 Feature 7 "Cloud").
@@ -83,7 +84,9 @@ export class OpenAiVisionProvider implements VisionProvider {
       throw new AiProviderError(this.id, 'response has no message content');
     }
     try {
-      return JSON.parse(content);
+      // Models frequently wrap JSON in ```json fences despite instructions.
+      // parseJsonPayload strips them; the schema layer rejects anything else.
+      return parseJsonPayload(content);
     } catch {
       return { raw: content }; // schema layer reports the problem
     }
@@ -134,6 +137,17 @@ function crc32(bytes: Uint8Array): number {
   return (crc ^ 0xffffffff) >>> 0;
 }
 
+/** Adler-32 — the checksum the zlib wrapper requires (NOT the PNG CRC-32). */
+function adler32(bytes: Uint8Array): number {
+  let a = 1;
+  let b = 0;
+  for (const byte of bytes) {
+    a = (a + byte) % 65521;
+    b = (b + a) % 65521;
+  }
+  return ((b << 16) | a) >>> 0;
+}
+
 function pngChunk(type: string, data: Uint8Array): Uint8Array {
   const out = new Uint8Array(12 + data.length);
   new DataView(out.buffer).setUint32(0, data.length);
@@ -164,7 +178,7 @@ function storedDeflate(raw: Uint8Array): Uint8Array {
     out.set(raw.subarray(start, start + size), cursor);
     cursor += size;
   }
-  new DataView(out.buffer).setUint32(cursor, crc32(raw) >>> 0);
+  new DataView(out.buffer).setUint32(cursor, adler32(raw) >>> 0);
   return out;
 }
 
